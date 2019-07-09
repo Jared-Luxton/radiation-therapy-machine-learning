@@ -1,4 +1,4 @@
-# Determining the Radiation Sensitivity Status of Cancer Patients
+# Determining a Radiation Sensitivity Status of Patients
 
 ### [Determining Radiation Sensitivity Status of Patients](https://nbviewer.jupyter.org/github/Jared-Luxton/Radiation-sensitivity-therapy-patients/blob/master/RADIATION-SENSITIVITY-telos-chromosomes.ipynb)
 
