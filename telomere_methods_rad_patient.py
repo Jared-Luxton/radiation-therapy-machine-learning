@@ -16,6 +16,16 @@ import statsmodels.api as sm
 from statsmodels.formula.api import ols
 from scipy import stats
 
+from ast import literal_eval
+import more_itertools
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error
+from xgboost import XGBRegressor
+from sklearn.metrics import explained_variance_score
+from sklearn.metrics import median_absolute_error
+
 
 def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
 
@@ -124,6 +134,7 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
     return all_patients_dict
 
 
+
 def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict, option='no graphs'):
 
     data = []
@@ -159,7 +170,8 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     SW_A_nonRAD = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
-                    data.append([sample[num:num2], '1 ' + 'non irrad', telos_samp.multiply(CF_mean), chr_d, working_status])
+                    individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
+                    data.append([sample[num:num2], '1 ' + 'non irrad', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
 
                 elif 'irrad @ 4 Gy' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
@@ -167,7 +179,8 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     SW_A_irrad4Gy = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
-                    data.append([sample[num:num2], '2 ' + 'irrad @ 4 Gy', telos_samp.multiply(CF_mean), chr_d, working_status])
+                    individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
+                    data.append([sample[num:num2], '2 ' + 'irrad @ 4 Gy', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
 
                 elif 'B' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
@@ -175,7 +188,8 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     SW_B = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
-                    data.append([sample[num:num2], '3 ' + 'B', telos_samp.multiply(CF_mean), chr_d, working_status])
+                    individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
+                    data.append([sample[num:num2], '3 ' + 'B', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
                     
                 elif 'C' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
@@ -183,7 +197,8 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     SW_C = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
-                    data.append([sample[num:num2], '4 ' + 'C', telos_samp.multiply(CF_mean), chr_d, working_status])
+                    individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
+                    data.append([sample[num:num2], '4 ' + 'C', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
 
                 else:
                     print('error with making dataframe from dict..')
@@ -219,7 +234,7 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                 continue
                 
     
-    all_patients_df = pd.DataFrame(data, columns=['patient id', 'timepoint', 'telo data', 'chr data', 'status'])
+    all_patients_df = pd.DataFrame(data, columns=['patient id', 'timepoint', 'telo data', 'cell data', 'chr data', 'status'])
     all_patients_df['patient id'] = all_patients_df['patient id'].astype('int')
     all_patients_df = all_patients_df.sort_values(by=['patient id', 'timepoint'], ascending=True, axis=0).reset_index(drop=True)
     all_patients_df['telo means'] = all_patients_df['telo data'].apply(lambda row: np.mean(row))
@@ -260,6 +275,27 @@ def gen_missing_values_andimpute_or_randomsampledown(n_cells, telosPercell, astr
             return astro_df
     else:
         return astro_df
+    
+    
+    
+def chunk_individual_telos_to_cells(telos_samp, n_telos):
+    """
+    splits up series of individual telomeres into equal parts, ala "cells"
+    i.e if you have 92 telomeres per cell & 50 cells have contributed
+    to this series, then pass 92 for n_telos.
+    will return 50 cells each containing 92 telos 
+    """
+    telos_list = list(telos_samp)
+    chunked_cells = more_itertools.chunked(telos_list, n_telos)
+    chunked_cells = list(chunked_cells)
+    
+    cell_means = []
+    
+    for cell in chunked_cells:
+        cell_means.append(np.mean(cell)) 
+    
+    return pd.Series(cell_means)
+    
     
     
 def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
@@ -421,23 +457,48 @@ def quartile_cts_rel_to_df1(df1, df2):
 
 def calculate_apply_teloQuartiles_dataframe(all_patients_df):
     
-    q1_row, q2_3_row, q4_row = 6, 7, 8
+    q1_row, q2_3_row, q4_row = 7, 8, 9
 
     for i, row in all_patients_df.iterrows():
         if 'non irrad' in row[1]:
             nonRAD = row[2]
-            all_patients_df.iat[i, 6], all_patients_df.iat[i, 7], all_patients_df.iat[i, 8] = (quartile_cts_rel_to_df1(nonRAD, nonRAD))
+            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, nonRAD))
 
         elif 'irrad @ 4 Gy' in row[1]:
-            all_patients_df.iat[i, 6], all_patients_df.iat[i, 7], all_patients_df.iat[i, 8] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
+            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
 
         elif 'B' in row[1]:
-            all_patients_df.iat[i, 6], all_patients_df.iat[i, 7], all_patients_df.iat[i, 8] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
+            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
 
         elif 'C' in row[1]:
-            all_patients_df.iat[i, 6], all_patients_df.iat[i, 7], all_patients_df.iat[i, 8] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
+            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
 
         else:
             print('unknown label in row[1] of the all patients df.. please check patient timepoint names')
             
     return all_patients_df
+
+
+
+
+def score_model_accuracy_metrics(models, X, y):
+    
+    score_list = []
+    
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, random_state=1)
+    
+    for model_name in models:
+    
+        if model_name == XGBRegressor:
+            model = XGBRegressor(objective='reg:squarederror', random_state=0)
+        elif model_name == RandomForestRegressor:
+            model = RandomForestRegressor(n_estimators=100, random_state=1)
+            
+        model.fit(X_train, y_train)
+        predict_y = model.predict(X_valid)
+        mae = mean_absolute_error(y_valid, predict_y)
+        evs = explained_variance_score(y_valid, predict_y)
+        score_list.append([model, model_name, mae, evs])
+        
+    score_df = pd.DataFrame(score_list, columns=['model', 'model name', 'Mean Absolute Error', 'Explained Variance'])
+    return score_df, score_list
