@@ -447,7 +447,8 @@ def quartile_cts_rel_to_df1(df1, df2):
 
     quartile_4 = df2[df2 >= df1.quantile(0.75)].count()
     
-    return quartile_1.values, quartile_2_3.values, quartile_4.values
+    return float(quartile_1.values), float(quartile_2_3.values), float(quartile_4.values)
+#     return quartile_1, quartile_2_3, quartile_4
 
 
 
@@ -489,9 +490,9 @@ def score_model_accuracy_metrics(models, X, y):
     
     for model_name in models:
     
-        if model_name == XGBRegressor:
+        if model_name == 'XGBRegressor':
             model = XGBRegressor(objective='reg:squarederror', random_state=0)
-        elif model_name == RandomForestRegressor:
+        elif model_name == 'RandomForestRegressor':
             model = RandomForestRegressor(n_estimators=100, random_state=1)
             
         model.fit(X_train, y_train)
