@@ -313,16 +313,12 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
 
             if bins[a] <= np.quantile(astroquartile, 0.25):
                 patches[a].set_facecolor('#fdff38')
-
             elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
                 patches[a].set_facecolor('#d0fefe')
-
             elif np.quantile(astroquartile, 0.50) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.75):
                 patches[a].set_facecolor('#d0fefe')
-
             elif bins[a] > np.quantile(astroquartile, 0.75): 
                 patches[a].set_facecolor('#ffbacd')
-
 
         axs[axsNUMone,axsNUMtwo].set_title('Histogram of ' + astroname + 's Telomeres')
         axs[axsNUMone,axsNUMtwo].set_xlabel('Bins of Individ. Telomeres')
@@ -333,29 +329,6 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
 
 
 def capture_patient_sample_ID(file):
-    """
-    # print(len('SW2A non irrad'),
-#       len('BJ1 for SW2_'),
-#       len('BJ-hTERT for SW2_'),
-#       len('SW10A non irrad'),
-#       len('BJ1 for SW10_'),
-#       len('BJ-hTERT for SW10_'),
-#       len('SW8B'),
-#       len('SW14B'),
-#       len('SW1A irrad @ 4 Gy'),
-#       len('SW12A irrad @ 4 Gy'))
-
-# 14 12 17 15 13 18 4 5 17 18
-
-empty = []
-for file in files:
-    num, num2 = capture_patient_sample_ID(file)
-    empty.append(file[num:num2])
-print(empty)
-
-# ['2', '2', '2', '10', '10', '10', '8', '15', '1', '12']
-    """
-
     if len(file) == 14:
         #it's patient id w/ 1 sample ID digit
         num = 2
@@ -487,7 +460,6 @@ def calculate_apply_teloQuartiles_dataframe(all_patients_df):
 
 
 
-
 def score_model_accuracy_metrics(models, X, y):
     
     score_list = []
@@ -509,3 +481,64 @@ def score_model_accuracy_metrics(models, X, y):
         
     score_df = pd.DataFrame(score_list, columns=['model', 'model name', 'Mean Absolute Error', 'Explained Variance'])
     return score_df, score_list
+
+
+def histogram_plot_groups(x=None, data=None, 
+                                 groupby=None, iterable=None):
+    
+    group_df = data.groupby(groupby)
+    
+    for item in iterable:
+        plot_df = group_df.get_group(item)
+        
+        non_irrad = plot_df[plot_df['timepoint'] == '1 non irrad'][x]
+        irrad_4_Gy = plot_df[plot_df['timepoint'] == '2 irrad @ 4 Gy'][x]
+        three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
+        four_C = plot_df[plot_df['timepoint'] == '4 C'][x]
+
+        n_bins = 70
+        fig, axs = plt.subplots(2, 2, sharey=True, tight_layout=False, figsize=(20, 13))
+        
+        ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+        ax = sns.set(font_scale=1)
+        
+        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
+        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
+        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
+        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
+        
+        
+
+def color_seaborn_histogram(data, ax, bins):
+    
+    """
+    rewriting individual telomere coloring scheme for seaborn.. from my original implementation in pandas/matplotlib
+
+    provides access to values of bin edges:
+    bin_vals = np.histogram(test, bins)[1]
+
+    access to objects for coloring:
+    ax.patches 
+    
+    usage:
+    
+    test = exploded_telos_all_patients_df[exploded_telos_all_patients_df['timepoint'] == '1 non irrad']['telo data exploded']
+    ax = sns.set(font_scale=1)
+    ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+    bins = 80
+    fig = plt.figure(figsize=(8,4))
+    ax = sns.distplot(test, hist=True, kde=False, bins=bins, hist_kws=dict(alpha=.9))
+    bin_vals = np.histogram(data, bins)[1]   
+    
+    color_seaborn_histogram(test, ax, bins)
+    """   
+        
+    for a in range(len(ax.patches)):
+        if bin_vals[a] < np.quantile(test, 0.25):
+            ax.patches[a].set_facecolor('#fdff38')
+        elif np.quantile(test, 0.25) < bin_vals[a] and bin_vals[a] <= np.quantile(test, 0.50):
+            ax.patches[a].set_facecolor('#d0fefe')
+        elif np.quantile(test, 0.50) < bin_vals[a] and bin_vals[a] <= np.quantile(test, 0.75):
+            ax.patches[a].set_facecolor('#d0fefe')
+        elif bin_vals[a] > np.quantile(test, 0.75): 
+            ax.patches[a].set_facecolor('#ffbacd')
