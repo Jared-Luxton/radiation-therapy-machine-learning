@@ -579,7 +579,47 @@ def change_sample_ID(row):
     else:
         return row
     
-    
+
+
+
+
+
+#############################################################################
+
+# Chromosome Aberration Methods 
+
+#############################################################################
+
+def make_dataframe_chr_aberr_data(patharg):
+
+    all_chr_aberr_df = pd.DataFrame()
+
+    for file in os.scandir(patharg):
+            if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
+                print(file)
+
+                try:
+                    df = pd.read_excel(file, usecols=list(range(29)), index_col=0, header=0)
+#                     print(df.columns)
+
+                except:
+                    print('File not found..')
+                    return -1
+            
+                one_non_irrad = df.iloc[0:90]
+                two_irrad_4_Gy = df.iloc[150:240]
+                three_B = df.iloc[300:390]
+                four_C = df.iloc[450:540]
+
+                all_chr_aberr_df = pd.concat([one_non_irrad, two_irrad_4_Gy, three_B, four_C, 
+                                              all_chr_aberr_df])
+            
+            
+            
+    return all_chr_aberr_df
+
+
+
 def adjust_inversions_clonality(row):
     """
     df = df.apply(adjust_inversions_clonality, axis=1)
