@@ -299,32 +299,41 @@ def chunk_individual_telos_to_cells(telos_samp, n_telos):
     
     
     
-def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
+# def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
 
-        astroarray = astroDF.to_numpy()
+#         astroarray = astroDF.to_numpy()
 
-        N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
+#         N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
 
-        for a in range(len(patches)):
-#             print(bins)
-#             [  0.   8.  16.  24.  32.  40.  48.  56.  64.  72.  80.  88.  96. 104.
-        #  112. 120. 128. 136. 144. 152. 160. 168. 176. 184. 192. 200. 208. 216.
-        #  224. 232. 240. 248. 256. 264. 272. 280. 288. 296. 304. 312. 320. 328.
-        #  336. 344. 352. 360. 368. 376. 384. 392. 400.]
+#         for a in range(len(patches)):
+# #             print(bins)
+# #             [  0.   8.  16.  24.  32.  40.  48.  56.  64.  72.  80.  88.  96. 104.
+#         #  112. 120. 128. 136. 144. 152. 160. 168. 176. 184. 192. 200. 208. 216.
+#         #  224. 232. 240. 248. 256. 264. 272. 280. 288. 296. 304. 312. 320. 328.
+#         #  336. 344. 352. 360. 368. 376. 384. 392. 400.]
 
-            if bins[a] <= np.quantile(astroquartile, 0.25):
-                patches[a].set_facecolor('#fdff38')
-            elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
-                patches[a].set_facecolor('#d0fefe')
-            elif np.quantile(astroquartile, 0.50) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.75):
-                patches[a].set_facecolor('#d0fefe')
-            elif bins[a] > np.quantile(astroquartile, 0.75): 
-                patches[a].set_facecolor('#ffbacd')
+#             if bins[a] <= np.quantile(astroquartile, 0.25):
+#                 patches[a].set_facecolor('#fdff38')
+#             elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
+#                 patches[a].set_facecolor('#d0fefe')
+#             elif np.quantile(astroquartile, 0.50) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.75):
+#                 patches[a].set_facecolor('#d0fefe')
+#             elif bins[a] > np.quantile(astroquartile, 0.75): 
+#                 patches[a].set_facecolor('#ffbacd')
+                
+#         font_axes=16
 
-        axs[axsNUMone,axsNUMtwo].set_title('Histogram of ' + astroname + 's Telomeres')
-        axs[axsNUMone,axsNUMtwo].set_xlabel('Bins of Individ. Telomeres')
-        axs[axsNUMone,axsNUMtwo].set_ylabel('Freqs of Individ. Telomeres')
-        axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(12))
+#         if axsNUMone == 0 and axsNUMtwo == 0:
+#             axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+
+#         if axsNUMone == 1 and axsNUMtwo == 0:
+#             axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+#             axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
+
+#         if axsNUMone == 1 and axsNUMtwo == 1:
+#             axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
+
+#         axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(12))
             
         
 
@@ -497,18 +506,57 @@ def histogram_plot_groups(x=None, data=None,
         three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
         four_C = plot_df[plot_df['timepoint'] == '4 C'][x]
 
-        n_bins = 70
-        fig, axs = plt.subplots(2, 2, sharey=True, tight_layout=False, figsize=(20, 13))
+        n_bins = 60
+        fig, axs = plt.subplots(2, 2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
         
         ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
-        ax = sns.set(font_scale=1)
+#         ax = sns.set(font_scale=1.4)
         
-        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
-        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
-        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
-        telo_mrp.histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
+        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
+        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
+        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
+        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
+
+
+
+
+def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
+
+    astroarray = astroDF.to_numpy()
+
+    N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
+
+    for a in range(len(patches)):
+
+
+        if bins[a] <= np.quantile(astroquartile, 0.25):
+            patches[a].set_facecolor('#fdff38')
+        elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
+            patches[a].set_facecolor('#d0fefe')
+        elif np.quantile(astroquartile, 0.50) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.75):
+            patches[a].set_facecolor('#d0fefe')
+        elif bins[a] > np.quantile(astroquartile, 0.75): 
+            patches[a].set_facecolor('#ffbacd')
+            
+    axs[axsNUMone,axsNUMtwo].set_title(f"{astroname}", fontsize=18,)
+    axs[axsNUMone,axsNUMtwo].tick_params(labelsize=12)
+                
+    font_axes=18
+
+    if axsNUMone == 0 and axsNUMtwo == 0:
+        axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+
+    if axsNUMone == 1 and axsNUMtwo == 0:
+        axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+        axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
+
+    if axsNUMone == 1 and axsNUMtwo == 1:
+        axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
+
+    axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(12))
+            
         
-        
+
 
 def color_seaborn_histogram(data, ax, bins):
     
@@ -560,8 +608,7 @@ def make_timepoint_col(row):
         return row
     
     else:
-        'error... unknown row id'
-        print(row)
+        pass
 
         
         
