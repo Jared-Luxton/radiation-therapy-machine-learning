@@ -24,9 +24,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 from xgboost import XGBRegressor
-from sklearn.metrics import explained_variance_score
+from sklearn.metrics import explained_variance_score, r2_score
 from sklearn.metrics import median_absolute_error
-
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import cross_val_score
 
 def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
 
@@ -134,6 +139,61 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
     print('completed file collection')
     return all_patients_dict
 
+
+def generate_dictionary_from_TeloLength_data(patharg):
+
+    all_patients_dict = {}
+
+    for file in os.scandir(patharg):
+        if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
+        
+            try:
+                df = pd.read_excel(file)
+
+            except:
+                print('File not found..')
+                return -1
+
+            print(file.name, 'data extraction in progress..') 
+#                   'it works peggy!! <3 <3 !!')
+                
+            telo_data = extract_and_clean_telos(df, file.name)
+
+
+            file = file.name.replace('.xlsx', '').rstrip()
+            data_list = []
+            file_chr = ''
+
+            num, num2 = capture_patient_sample_ID(file)
+
+            if file[num:num2] not in all_patients_dict.keys():
+                all_patients_dict[file[num:num2]] = {file: []}
+
+                if len(all_patients_dict[file[num:num2]][file]) == 0:
+                    all_patients_dict[file[num:num2]][file] = data_list
+                    data_list.append(telo_data)
+                    data_list.sort()
+       
+
+                elif len(all_patients_dict[file[num:num2]][file]) == 1:
+                    data_list.append(telo_data)
+                    data_list.sort()
+
+
+            elif file[num:num2] in all_patients_dict.keys():
+                if file in all_patients_dict[file[num:num2]]:
+                    all_patients_dict[file[num:num2]][file].append(telo_data)
+                    all_patients_dict[file[num:num2]][file].sort()
+     
+
+                elif file not in all_patients_dict[file[num:num2]]:     
+                    all_patients_dict[file[num:num2]][file] = data_list
+                    all_patients_dict[file[num:num2]][file].append(telo_data)
+                    all_patients_dict[file[num:num2]][file].sort()
+
+                        
+    print('completed file collection')
+    return all_patients_dict
 
 
 def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict, option='no graphs'):
@@ -259,6 +319,7 @@ def gen_missing_values_andimpute_or_randomsampledown(n_cells, telosPercell, astr
     if astro_df.size > 25 and astro_df.size <= 2300:
         missing_data_difference = abs( (n_cells * telosPercell) - astro_df.size )
         rsampled = astro_df.sample(missing_data_difference, replace=True, random_state=28)
+        rsampled = rsampled * 0.99999
         concat_ed = pd.concat([rsampled, astro_df], sort=False)
         np.random.shuffle(concat_ed.to_numpy())
         concat_ed.reset_index(drop=True, inplace=True)
@@ -268,6 +329,7 @@ def gen_missing_values_andimpute_or_randomsampledown(n_cells, telosPercell, astr
         missing_data_difference = abs( (n_cells * telosPercell) - astro_df.size )
         if option == 'rsamp':
             rsampled = astro_df.sample(missing_data_difference, random_state=28)
+            rsampled = rsampled * 0.99999
             concat_ed = pd.concat([rsampled, astro_df], sort=False)
             np.random.shuffle(concat_ed.to_numpy())
             concat_ed.reset_index(drop=True, inplace=True)
@@ -498,27 +560,57 @@ def histogram_plot_groups(x=None, data=None,
     
     group_df = data.groupby(groupby)
     
-    for item in iterable:
-        plot_df = group_df.get_group(item)
+    if groupby == 'timepoint':
+            item = None
+            non_irrad = group_df.get_group('1 non irrad').dropna(axis=0)[x]
+            irrad_4_Gy = group_df.get_group('2 irrad @ 4 Gy').dropna(axis=0)[x]
+            three_B = group_df.get_group('3 B').dropna(axis=0)[x]
+            four_C = group_df.get_group('4 C').dropna(axis=0)[x]
+            
+            graph_four_histograms(non_irrad, 60, non_irrad, irrad_4_Gy, three_B, four_C,
+                                                '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C')
+    
+    elif groupby == 'patient id':
+        for item in iterable:
         
-        non_irrad = plot_df[plot_df['timepoint'] == '1 non irrad'][x]
-        irrad_4_Gy = plot_df[plot_df['timepoint'] == '2 irrad @ 4 Gy'][x]
-        three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
-        four_C = plot_df[plot_df['timepoint'] == '4 C'][x]
+            plot_df = group_df.get_group(item)
+            non_irrad = plot_df[plot_df['timepoint'] == '1 non irrad'][x]
+            irrad_4_Gy = plot_df[plot_df['timepoint'] == '2 irrad @ 4 Gy'][x]
+            three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
+            four_C = plot_df[plot_df['timepoint'] == '4 C'][x]
+            
+            graph_four_histograms(non_irrad, 60, non_irrad, irrad_4_Gy, three_B, four_C,
+                                                 f'patient #{item} 1 non rad', 
+                                                 f'patient #{item} 2 irrad @ 4 Gy', 
+                                                 f'patient #{item} 3 B', 
+                                                 f'patient #{item} 4 C')
 
-        n_bins = 60
-        fig, axs = plt.subplots(2, 2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
-        
-        ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
-#         ax = sns.set(font_scale=1.4)
-        
-        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
-        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
-        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
-        histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
+#             n_bins = 60
+#             fig, axs = plt.subplots(2, 2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
 
+#             ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+#     #         ax = sns.set(font_scale=1.4)
 
+#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
+#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
+#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
+#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
 
+    #         plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
+
+def graph_four_histograms(quartile_ref, n_bins, df1, df2, df3, df4,
+                                                name1, name2, name3, name4):
+    
+    n_bins = n_bins
+    fig, axs = plt.subplots(2,2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
+    sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df1, quartile_ref, name1, 0, 0)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df2, quartile_ref, name2, 0, 1)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df3, quartile_ref, name3, 1, 0)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df4, quartile_ref, name4, 1, 1)
+    
+#     plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
 
 def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
 
@@ -676,20 +768,282 @@ def adjust_inversions_clonality(row):
         pass
     
     if 'inv' in row['sample notes']:
+        
         sample_notes = row['sample notes']
         clonal_inv = re.findall('[0-9] inv', sample_notes)
-#         print(clonal_inv)
-#         print(len(clonal_inv))
         
         if len(clonal_inv) > 0:
             row['# inversions'] = row['# inversions'] - len(clonal_inv)
         
         if 'term' in row['sample notes']:
             clonal_term_inv = re.findall('term inv', sample_notes)
-#             print(clonal_term_inv)
-#             print(len(clonal_term_inv))
     
             if len(clonal_term_inv) > 0:
                 row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
 
     return row
+
+
+#############################################
+# MACHINE LEARNING HELPER FUNCTIONS / CLASSES
+
+
+def stratify_SS_make_train_test(X, y, test_size, random_state):
+    split = StratifiedShuffleSplit(n_splits=2, test_size=test_size, random_state=random_state)
+
+    for train_index, test_index in split.split(X, y):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+            
+    return X_train, X_test, y_train, y_test
+    
+    
+def get_dummies_timepoints(df, columns):
+    col_retain_df = df[df['timepoint'].isin(columns)]
+    col_dummies = pd.get_dummies(col_retain_df, drop_first=True, columns=['timepoint'])
+    return col_dummies
+
+
+def calc_telomere_length_post_relative_pre(row):
+    if row['4 C telo means'] > row['telo means']:
+        row['length relative to pre'] = 1
+    elif row['4 C telo means'] < row['telo means']:
+        row['length relative to pre'] = 0
+    return row 
+
+
+def combine_data(exploded_telos=None, all_patients_df=None, 
+                 prediction_objective='4 C means from individual telos',
+                 timepoints_keep=['1 non irrad', '2 irrad @ 4 Gy']):
+    
+    if prediction_objective == '4 C means from individual telos': 
+        col_to_rename = 'telo means'
+        col_to_keep = 'individual telomeres'
+        target = '4 C telo means'
+        
+    elif prediction_objective == '4 C means from telo means':
+        col_to_rename = 'telo means'
+        col_to_keep = 'telo means'
+        target = '4 C telo means'
+        
+    elif prediction_objective == '4 C # short telos from individual telos':
+        col_to_rename = 'Q1'
+        col_to_keep = 'individual telomeres'
+        target = '4 C # short telos'
+    
+    # pulling out 4 C
+    four_C = all_patients_df[all_patients_df['timepoint'] == '4 C'][['patient id', col_to_rename, 'timepoint']]
+    four_C.rename(columns={col_to_rename: target}, inplace=True)
+
+    if prediction_objective == '4 C means from individual telos':
+        # merging individual telomere data w/ 4 C telo means on patient id
+        telo_data = (exploded_telos[exploded_telos['timepoint'] != '4 C']
+                 .merge(four_C[[target, 'patient id']], on=['patient id']))
+    
+    elif prediction_objective == '4 C means from telo means':
+        telo_data = (all_patients_df[all_patients_df['timepoint'] != '4 C']
+             .merge(four_C[[target, 'patient id']], on=['patient id']))
+    
+    elif prediction_objective == '4 C # short telos from individual telos':
+        telo_data = (exploded_telos[exploded_telos['timepoint'] != '4 C']
+                 .merge(four_C[[target, 'patient id']], on=['patient id']))
+
+    
+#     cols to retain
+#     cols_to_drop = [col for col in telo_data.columns if col not in cols_keep]
+#     telo_data.drop(cols_to_drop, axis=1, inplace=True)
+    telo_data = telo_data[['patient id', 'timepoint', col_to_keep, target]].copy()
+    
+    # timepoints of interest
+    telo_data = telo_data[telo_data['timepoint'].isin(timepoints_keep)].copy()
+    telo_data.reset_index(drop=True, inplace=True)
+    return telo_data
+
+
+class clean_data(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    
+    
+    def transform(self, X, y=None):       
+        # renaming cols
+        cols = list(X.columns)
+        for col in cols:
+            if ('timepoint_3 B' in cols) and ('_3 B' in col or 'irrad' in col):
+                X.rename(columns={col:col.replace(' ', '')}, inplace=True)
+            elif ('timepoint_3 B' not in cols) and ('irrad' in col):
+                X.rename(columns={col:'timepoint'}, inplace=True)
+
+        # enforcing col types
+        cols = list(X.columns)
+        for col in cols:
+            if 'patient id' in col or 'timepoint' in col:
+                X[col] = X[col].astype('int64')
+            else:
+                X[col] = X[col].astype('float64')
+
+        return X
+
+
+def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
+    
+    grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid, 
+                              n_iter=n_iter, cv=cv, iid=False)
+    
+    pd.options.mode.chained_assignment = None  # this is because the gridsearch throws a lot of pointless warnings
+    tmp = data.copy()
+    grid = grid.fit(tmp, target)
+    pd.options.mode.chained_assignment = 'warn'
+    result = pd.DataFrame(grid.cv_results_).sort_values(by='mean_test_score', 
+                                                        ascending=False).reset_index()
+    
+    del result['params']
+    times = [col for col in result.columns if col.endswith('_time')]
+    params = [col for col in result.columns if col.startswith('param_')]
+    
+    result = result[params + ['mean_test_score', 'std_test_score'] + times]
+    
+    return result, grid.best_estimator_
+
+
+def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
+                          pipe=None, model=None, cv=5):
+    
+    features = [col for col in train_set if col != target]
+    
+    X_train = train_set[features]
+    X_test = test_set[features]
+    
+    y_train = train_set[target]
+    y_test = test_set[target]
+    
+    # cv
+    scores = -1 * cross_val_score(pipe, X_train, y_train,
+                              cv=5, scoring='neg_mean_absolute_error')
+    print(f'MAE per CV fold: \n{scores} \n')
+    print(f'MEAN of MAE all folds: {scores.mean()}')
+    print(f'STD of MAE all folds: {scores.std()}\n')
+
+    # fitting the model
+    model.fit(X_train, y_train)
+
+    # predict y_test from X_test - this is using the train/test split w/o shuff;ing
+    predict_y_test = model.predict(X_test)
+    print(f"MAE of predict_y_test & y_test: {mean_absolute_error(y_test, predict_y_test)}")
+    print(f'R2 between predict_y_test & y_test: {r2_score(y_test, predict_y_test)}')
+    
+    return model
+
+
+def predict_target_4C_compare_actual(telo_data=None, train_set=None, test_set=None, 
+                                     model=None, target='4 C telo means'):
+
+    
+    features = [col for col in train_set if col != target and col != 'patient id']
+    
+    X_train = train_set[features]
+    X_test = test_set[features]
+    
+    y_train = train_set[target]
+    y_test = test_set[target]
+    
+    y_predict_list = []
+    y_true_list = []
+
+    for patient in list(telo_data['patient id'].unique()):
+        patient_data = telo_data[telo_data['patient id'] == patient]
+        actual_4C = patient_data[target].mean()
+        predict_4C = model.predict(patient_data[features])
+        
+        print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
+        y_predict_list.append(np.mean(predict_4C))
+        y_true_list.append(actual_4C)
+        
+    print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
+    print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
+    
+    return y_predict_list, y_true_list
+
+
+class make_features(BaseEstimator, TransformerMixin):
+    def __init__(self, make_log_individ_telos=False, make_log_target=False):
+        self.make_log_individ_telos = make_log_individ_telos
+        self.make_log_target = make_log_target
+        
+        
+    def fit(self, X, y=None):
+        return self
+    
+    
+    def create_log_individ_telos(self, X, y=None):
+        X['individual telos'] = np.log1p(X['individual telos'])
+        return X
+    
+    
+    def create_log_target(self, X, y=None):
+        X['4 C telo means'] = np.log1p(X['4 C telo means'])
+        return X
+        
+        
+    def transform(self, X, y=None):
+        if self.make_log_individ_telos:
+            X = self.create_log_individ_telos(X)
+            
+        if self.make_log_target:
+            X = self.create_log_target(X)
+        return X
+    
+    
+class make_dummies(BaseEstimator, TransformerMixin):
+    def __init__(self, drop_first=True, cols_to_dummify=['timepoint']):
+        self.drop_first = drop_first
+        self.cols_to_dummify = cols_to_dummify
+        
+    
+    def fit(self, X, y=None):
+        return self
+    
+    
+    def transf_dummies(self, X, y=None):
+        dummies = pd.get_dummies(X, drop_first=self.drop_first, columns=self.cols_to_dummify)
+        return dummies
+    
+    
+    def transform(self, X, y=None):
+        X = self.transf_dummies(X)
+        return X
+    
+    
+class clean_data(BaseEstimator, TransformerMixin):
+    def __init__(self, drop_patient_id=True):
+        self.drop_patient_id = drop_patient_id
+    
+    
+    def fit(self, X, y=None):
+        return self
+    
+    
+    def transform(self, X, y=None):       
+        # renaming cols
+        cols = list(X.columns)
+        i=1
+        for col in cols:
+            if ('timepoint_3 B' in cols) and ('_3 B' in col or 'irrad' in col):
+                X.rename(columns={col:col.replace(' ', '')}, inplace=True)
+            elif ('timepoint_3 B' not in cols) and ('irrad' in col):
+                X.rename(columns={col:f'timepoint_{i}'}, inplace=True)
+                i+=1
+                
+        # enforcing col types
+        cols = list(X.columns)
+        for col in cols:
+            if 'patient id' in col or 'timepoint' in col:
+                X[col] = X[col].astype('int64')
+            else:
+                X[col] = X[col].astype('float64')
+                
+        if self.drop_patient_id:
+            X.drop(['patient id'], axis=1, inplace=True)
+            
+        X.reset_index(drop=True, inplace=True)
+        return X
