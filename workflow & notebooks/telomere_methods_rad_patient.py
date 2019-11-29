@@ -909,13 +909,13 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
 def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
                           pipe=None, model=None, cv=5):
     
-    features = [col for col in train_set if col != target]
+    features = [col for col in train_set if col != target and col != 'patient id']
     
-    X_train = train_set[features]
-    X_test = test_set[features]
+    X_train = train_set[features].copy()
+    X_test = test_set[features].copy()
     
-    y_train = train_set[target]
-    y_test = test_set[target]
+    y_train = train_set[target].copy()
+    y_test = test_set[target].copy()
     
     # cv
     scores = -1 * cross_val_score(pipe, X_train, y_train,
