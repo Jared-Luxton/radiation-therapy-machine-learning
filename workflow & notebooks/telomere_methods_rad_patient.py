@@ -935,25 +935,28 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
     return model
 
 
-def predict_target_4C_compare_actual(telo_data=None, train_set=None, test_set=None, 
-                                     model=None, target='4 C telo means'):
+def predict_target_4C_compare_actual(telo_data=None, test_set=None, 
+                                     model=None, target='4 C telo means',
+                                     clean_process_pipe=None):
 
+    test_set_copy = test_set.copy()
+    test_set_cleaner = clean_process_pipe
+    test_set_cleaned = test_set_cleaner.set_params(cleaner__drop_patient_id=False).fit_transform(test_set_copy)
     
-    features = [col for col in train_set if col != target and col != 'patient id']
-    
-    X_train = train_set[features]
-    X_test = test_set[features]
-    
-    y_train = train_set[target]
-    y_test = test_set[target]
-    
+    features = [col for col in test_set if col != target]
+
     y_predict_list = []
     y_true_list = []
 
     for patient in list(telo_data['patient id'].unique()):
+        # calculate actual mean telomere length per patient w/ all individual telos
         patient_data = telo_data[telo_data['patient id'] == patient]
         actual_4C = patient_data[target].mean()
-        predict_4C = model.predict(patient_data[features])
+        
+        # calculate predicted mean telomere length per patient using only test data
+        test_patient_data = test_set_cleaned[test_set_cleaned['patient id'] == patient]
+        test_patient_data.drop(['patient id', target], axis=1, inplace=True)
+        predict_4C = model.predict(test_patient_data)
         
         print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
         y_predict_list.append(np.mean(predict_4C))
