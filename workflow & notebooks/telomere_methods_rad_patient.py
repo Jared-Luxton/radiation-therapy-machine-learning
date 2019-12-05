@@ -780,6 +780,14 @@ def adjust_inversions_clonality(row):
     
             if len(clonal_term_inv) > 0:
                 row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
+                
+    if 'trans' in row['sample notes']:
+        
+        sample_notes = row['sample notes']
+        clonal_trans = re.findall('[0-9] inv', sample_notes)
+        
+        if len(clonal_trans) > 0:
+            row['translocations reciprocal 1,2,3'] = row['translocations reciprocal 1,2,3'] - len(clonal_trans)
 
     return row
 
@@ -939,6 +947,7 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
                                      model=None, target='4 C telo means',
                                      clean_process_pipe=None):
 
+    telo_data = telo_data.copy()
     test_set_copy = test_set.copy()
     test_set_cleaner = clean_process_pipe
     test_set_cleaned = test_set_cleaner.set_params(cleaner__drop_patient_id=False).fit_transform(test_set_copy)
@@ -954,7 +963,7 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
         actual_4C = patient_data[target].mean()
         
         # calculate predicted mean telomere length per patient using only test data
-        test_patient_data = test_set_cleaned[test_set_cleaned['patient id'] == patient]
+        test_patient_data = test_set_cleaned[test_set_cleaned['patient id'] == patient].copy()
         test_patient_data.drop(['patient id', target], axis=1, inplace=True)
         predict_4C = model.predict(test_patient_data)
         
