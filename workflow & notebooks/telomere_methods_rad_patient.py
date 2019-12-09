@@ -926,11 +926,10 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
     y_test = test_set[target].copy()
     
     # cv
-    scores = -1 * cross_val_score(pipe, X_train, y_train,
-                              cv=5, scoring=scoring)
-    print(f'{scoring} per CV fold: \n{scores} \n')
-    print(f'MEAN of {scoring} all folds: {scores.mean()}')
-    print(f'STD of {scoring} all folds: {scores.std()}\n')
+    scores = -1 * cross_val_score(pipe, X_train, y_train, cv=5, scoring=scoring)
+    print(f'MAE per CV fold: \n{scores} \n')
+    print(f'MEAN of MAE all folds: {scores.mean()}')
+    print(f'STD of MAE all folds: {scores.std()}\n')
 
     # fitting the model
     model.fit(X_train, y_train)
@@ -1081,9 +1080,11 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
     
     def enforce_column_types(self, X, y=None):
         for col in X.columns:
-            if col == 'sample notes':
+            if col == 'sample notes' or col == 'timepoint':
                 X[col] = X[col].astype('str')
-            else:
+            elif col in ['# inversions', '# terminal inversions', 
+                         'translocations reciprocal 1,2,3',
+                         'translocations one-way 1,2,3', 'dicentrics']:
                 X[col] = X[col].astype('int64')
         return X
     
@@ -1119,13 +1120,10 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         # combining satellite associations
         X['# sat associations'] = (X['# 2 chr sat. associations'] + X['# 3 chr sat. associations'] +
                                    X['# 4 chr sat. associations'] + X['# 5+ chr sat. associations'])
-        
         # combining terminal SCEs
         X['# terminal SCEs'] = X['# terminal SCEs cis-paint'] + X['# terminal SCEs cis-dark']
-
         # combining translocations
         X['# translocations'] = X['translocations reciprocal 1,2,3'] + X['translocations one-way 1,2,3']
-        
         return X
     
     
@@ -1138,19 +1136,18 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
                             'tricentrics', '# sub-telo SCEs',
                             'chr fragments', 'expected chr fragments'
                            ], axis=1)
-
         # dropping misc. notation columns
         X = X.drop(columns=['metaphase size', 'terminal inversion size', 'inversion size',
                             'inversion notes', 'terminal inversion notes',
-                            'translocation intra notes', 'sample notes',
+                            'translocation intra notes', 'sample notes', 'chromosome'
                            ], axis=1)
-        
         return X
     
     
     def drop_timepoint(self, X, y=None):
         X = X[X['timepoint'] != self.drop_what_timepoint].copy()
         return X
+    
     
     def drop_patient_ID(self, X, y=None):
         X = X[X['patient id'] != 13].copy()
@@ -1169,12 +1166,20 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         
         X = self.drop_columns(X)
         X = self.drop_patient_ID(X)
+        
+        X.rename(columns={'dicentrics': '# dicentrics'}, inplace=True)
+        # data is arranged as events (chr aberr) per chromosome per cell; first sum per cell
+        X = X.groupby(['patient id', 'timepoint', 'cell number']).agg('sum').reset_index()
+        X.drop(['cell number'], axis=1, inplace=True) 
         return X
     
     
-class make_features(BaseEstimator, TransformerMixin):
-    def __init__(self, combine_inversions=True):
+class make_chr_features(BaseEstimator, TransformerMixin):
+    def __init__(self, combine_inversions=False, bool_features=False,
+                       features=['# inversions', '# terminal inversions', '# dicentrics', '# translocations']):
         self.combine_inversions = combine_inversions
+        self.bool_features = bool_features
+        self.features = features
     
     
     def fit(self, X, y=None):
@@ -1186,15 +1191,31 @@ class make_features(BaseEstimator, TransformerMixin):
         return X
     
     
+    def true_false(self, row):
+        if int(row) == 0:
+            row = False
+        elif int(row) > 0:
+            row = True
+        return row
+    
+    def make_bool_features(self, X, y=None):
+        for feature in self.features:
+            X[f'BOOL {feature}'] = X[feature].apply(lambda row: self.true_false(row))
+            X[f'BOOL {feature}'] = X[f'BOOL {feature}'].astype('bool')
+        return X
+    
+    
     def transform(self, X, y=None):
         if self.combine_inversions:
             X = self.total_inversions(X)
+        if self.bool_features:
+            X = self.make_bool_features(X)
         return X
     
     
 class make_target_merge(BaseEstimator, TransformerMixin):
-    def __init__(self, target='mean aberr index', target_timepoint='4 C', target_type='encoded',
-                       features=['# inversions', '# terminal inversions', '# translocations', 'dicentrics'], 
+    def __init__(self, target='4 C mean aberration index', target_timepoint='4 C', target_type='means',
+                       features=['# inversions', '# terminal inversions', '# dicentrics', '# translocations'], 
                        drop_first=True):
         self.target = target
         self.target_timepoint = target_timepoint
@@ -1208,56 +1229,46 @@ class make_target_merge(BaseEstimator, TransformerMixin):
     
     
     def encode_target_4C(self, row):
-        target = f'4 C {self.target}'
-        features = self.features
-        encoded = f'4 C encoded {self.target}'
+        target = self.target
+        irrad4gy_index = '2 irrad @ 4 Gy mean aberration index'
+        encoded = '4 C encoded mean aberration index'
         
-        if row[target] > row[features]:
+        if row[target] > row[irrad4gy_index]:
             row[encoded] = 2
-        elif row[target] == row[features]:
+        elif row[target] == row[irrad4gy_index]:
             row[encoded] = 1
-        elif row[target] < row[features]:
+        elif row[target] < row[irrad4gy_index]:
             row[encoded] = 0
         else:
             print('error')
         return row
     
     
+    def extract_timepoint_rename(self, X, y=None, timept=None):
+        timept_means = X[X['timepoint'] == timept][['patient id', 'timepoint', 'mean aberration index']]
+        timept_means.rename(columns={'mean aberration index':f'{timept} mean aberration index'}, inplace=True)
+        return timept_means
+    
+    
     def arrange_features_target(self, X, y=None):
-        # data is arranged as events (chr aberr) per chromosome per cell; first sum per cell
-        X = X.groupby(['patient id', 'timepoint', 'cell number']).agg('sum').reset_index()
-        X.drop(['cell number'], axis=1, inplace=True)  
-        
-        X['mean aberration index'] = X['']
-        
-        X_means = X.groupby(['patient id', 'timepoint']).agg('mean').reset_index()
-        X_means['mean aberr index'] = X_means['']
-        # rearranging features & target 
-        X_features = X[['patient id', 'timepoint'] + [self.feature]].copy()
-        X_features = X_features[X_features['timepoint'] != '4 C'].copy()
-        
-        # pulling out data for target, taking mean chr aberr freqs
-        pre_target = X[['patient id', 'timepoint', self.target]].copy()
-        pre_target_means = pre_target.groupby(['patient id', 'timepoint']).agg('mean').reset_index()
-        
-        # pulling out just 4 C target, dropping timepoint & renaming the 4 C col
-        y_target_4C = pre_target_means[pre_target_means['timepoint'] == self.target_timepoint].copy()
-        y_target_4C.drop(['timepoint'], axis=1, inplace=True)
-        y_target_4C.rename(columns={self.target: f'4 C {self.target}'}, inplace=True)
-        
-        # pulling out irrad @ 4 Gy col to enable comparison w/ 4 C target
-        # merging irrad @ 4 Gy, comparing & yielding encoded col
-        # merging encodings onto features, final arrangement
-        if self.target_type == 'encoded':
-            irrad4Gy_means = pre_target_means[pre_target_means['timepoint'] == '2 irrad @ 4 Gy']
-            merge_irrad4Gy_y = y_target_4C.merge(irrad4Gy_means, on=['patient id'])
-            merge_irrad4Gy_y[f'4 C encoded {self.target}'] = 'temp'
-            merge_irrad4Gy_y = merge_irrad4Gy_y.apply(self.encode_target_4C, axis=1)
-            complete = X_features.merge(merge_irrad4Gy_y[['patient id', f'4 C encoded {self.target}']], on='patient id')
+        bool_cols = [col for col in X.columns if 'BOOL' in col]
+        X = X[['patient id', 'timepoint'] + self.features + bool_cols].copy()
+        X['mean aberration index'] = X[self.features].sum(axis=1)
             
-        # merging mean chr aberr freqs onto features, final arrangement
-        elif self.target_type == 'means':
-            complete = X_features.merge(y_target_4C[['patient id', f'4 C {self.target}']], on='patient id')
+        X_means = X.groupby(['patient id', 'timepoint']).agg('mean').reset_index()
+        X.drop(['mean aberration index'], axis=1, inplace=True)
+        fourC_means = self.extract_timepoint_rename(X_means, timept='4 C')
+        irrad4Gy_means = self.extract_timepoint_rename(X_means, timept='2 irrad @ 4 Gy')
+        
+        complete = X.merge(irrad4Gy_means[['patient id', '2 irrad @ 4 Gy mean aberration index']], on='patient id')
+        complete = complete.merge(fourC_means[['patient id', '4 C mean aberration index']], on='patient id')
+        complete = complete[complete['timepoint'] != '4 C'].copy()
+        
+#         if self.target_type == 'encoded':
+#             complete['4 C encoded mean aberration index'] = 'temp'
+#             complete = complete.apply(self.encode_target_4C, axis=1)
+        
+        complete.drop(['2 irrad @ 4 Gy mean aberration index'], axis=1, inplace=True)
         return complete
         
     
