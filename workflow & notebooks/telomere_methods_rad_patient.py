@@ -1093,18 +1093,21 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         if row['sample notes'] == 'NaN' or row['sample notes'] == 'nan':
             pass
     
-        if 'inv' in row['sample notes']:
+        if 'inv' in row['sample notes'] and 'term' not in row['sample notes']:
             sample_notes = row['sample notes']
             clonal_inv = re.findall('[0-9] inv', sample_notes)
+#             print(sample_notes, clonal_inv)
 
             if len(clonal_inv) > 0:
                 row['# inversions'] = row['# inversions'] - len(clonal_inv)
                 
-            if 'term' in row['sample notes']:
-                clonal_term_inv = re.findall('term inv', sample_notes)
+        if 'term' in row['sample notes']:
+            sample_notes = row['sample notes']
+            clonal_term_inv = re.findall('[0-9] term', sample_notes)
+#             print(sample_notes, clonal_term_inv)
                 
-                if len(clonal_term_inv) > 0:
-                    row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
+            if len(clonal_term_inv) > 0:
+                row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
 
         if 'trans' in row['sample notes']:
             sample_notes = row['sample notes']
@@ -1139,7 +1142,9 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         # dropping misc. notation columns
         X = X.drop(columns=['metaphase size', 'terminal inversion size', 'inversion size',
                             'inversion notes', 'terminal inversion notes',
-                            'translocation intra notes', 'sample notes', 'chromosome'
+                            'translocation intra notes', 
+                            'sample notes', 
+                            'chromosome'
                            ], axis=1)
         return X
     
