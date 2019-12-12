@@ -619,8 +619,6 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
     N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
 
     for a in range(len(patches)):
-
-
         if bins[a] <= np.quantile(astroquartile, 0.25):
             patches[a].set_facecolor('#fdff38')
         elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
@@ -915,7 +913,7 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
 
 
 def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
-                          pipe=None, model=None, cv=5, scoring='neg_mean_absolute_error'):
+                          model=None, cv=5, scoring='neg_mean_absolute_error'):
     
     features = [col for col in train_set if col != target and col != 'patient id']
     
@@ -926,7 +924,7 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
     y_test = test_set[target].copy()
     
     # cv
-    scores = -1 * cross_val_score(pipe, X_train, y_train, cv=5, scoring=scoring)
+    scores = -1 * cross_val_score(model, X_train, y_train, cv=5, scoring=scoring)
     print(f'MAE per CV fold: \n{scores} \n')
     print(f'MEAN of MAE all folds: {scores.mean()}')
     print(f'STD of MAE all folds: {scores.std()}\n')
@@ -1219,7 +1217,7 @@ class make_chr_features(BaseEstimator, TransformerMixin):
     
     
 class make_target_merge(BaseEstimator, TransformerMixin):
-    def __init__(self, target='4 C mean aberration index', target_timepoint='4 C', target_type='means',
+    def __init__(self, target='aberration index', target_timepoint='4 C', target_type='means',
                        features=['# inversions', '# terminal inversions', '# dicentrics', '# translocations'], 
                        drop_first=True):
         self.target = target
@@ -1250,30 +1248,33 @@ class make_target_merge(BaseEstimator, TransformerMixin):
     
     
     def extract_timepoint_rename(self, X, y=None, timept=None):
-        timept_means = X[X['timepoint'] == timept][['patient id', 'timepoint', 'mean aberration index']]
-        timept_means.rename(columns={'mean aberration index':f'{timept} mean aberration index'}, inplace=True)
-        return timept_means
+        target_col = f'{timept} {self.target}'
+        timept_means = X[X['timepoint'] == timept][['patient id', 'timepoint', self.target]]
+        timept_means.rename(columns={self.target: target_col}, inplace=True)
+        return timept_means, target_col
     
     
     def arrange_features_target(self, X, y=None):
         bool_cols = [col for col in X.columns if 'BOOL' in col]
         X = X[['patient id', 'timepoint'] + self.features + bool_cols].copy()
-        X['mean aberration index'] = X[self.features].sum(axis=1)
+        if self.target == 'aberration index':
+            X[self.target] = X[self.features].sum(axis=1)
             
         X_means = X.groupby(['patient id', 'timepoint']).agg('mean').reset_index()
-        X.drop(['mean aberration index'], axis=1, inplace=True)
-        fourC_means = self.extract_timepoint_rename(X_means, timept='4 C')
-        irrad4Gy_means = self.extract_timepoint_rename(X_means, timept='2 irrad @ 4 Gy')
+        if self.target == 'aberration index':
+            X.drop([self.target], axis=1, inplace=True)
+        fourC_means, target_4C = self.extract_timepoint_rename(X_means, timept='4 C')
+        irrad4Gy_means, target_irr4Gy = self.extract_timepoint_rename(X_means, timept='2 irrad @ 4 Gy')
         
-        complete = X.merge(irrad4Gy_means[['patient id', '2 irrad @ 4 Gy mean aberration index']], on='patient id')
-        complete = complete.merge(fourC_means[['patient id', '4 C mean aberration index']], on='patient id')
+        complete = X.merge(fourC_means[['patient id', target_4C]], on='patient id')
+        complete = complete.merge(irrad4Gy_means[['patient id', target_irr4Gy]], on='patient id')
         complete = complete[complete['timepoint'] != '4 C'].copy()
         
 #         if self.target_type == 'encoded':
 #             complete['4 C encoded mean aberration index'] = 'temp'
 #             complete = complete.apply(self.encode_target_4C, axis=1)
         
-        complete.drop(['2 irrad @ 4 Gy mean aberration index'], axis=1, inplace=True)
+        complete.drop([target_irr4Gy], axis=1, inplace=True)
         return complete
         
     
@@ -1286,3 +1287,17 @@ class make_target_merge(BaseEstimator, TransformerMixin):
         X = self.arrange_features_target(X)
         X = self.encode_timepoint_col(X)
         return X
+    
+    
+def xgboost_hyper_param(learning_rate, n_estimators, max_depth,
+                        subsample, colsample, gamma):
+ 
+    max_depth = int(max_depth)
+    n_estimators = int(n_estimators)
+ 
+    clf = XGBRegressor(max_depth=max_depth,
+                       learning_rate=learning_rate,
+                       n_estimators=n_estimators,
+                       gamma=gamma, objective='reg:squarederror')
+    
+    return np.mean(cross_val_score(clf, X_train, y_train, cv=5, scoring='neg_mean_absolute_error'))
