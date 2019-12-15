@@ -229,6 +229,7 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_A_nonRAD_name = sample
                     SW_A_nonRAD = telos
+#                     telos_samp = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
@@ -238,6 +239,7 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_A_irrad4Gy_name = sample
                     SW_A_irrad4Gy = telos
+#                     telos_samp = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
@@ -247,6 +249,7 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_B_name = sample
                     SW_B = telos
+#                     telos_samp = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
@@ -256,6 +259,7 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_C_name = sample
                     SW_C = telos
+#                     telos_samp = telos
                     telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
@@ -804,8 +808,8 @@ def stratify_SS_make_train_test(X, y, test_size, random_state):
     return X_train, X_test, y_train, y_test
     
     
-def get_dummies_timepoints(df, columns):
-    col_retain_df = df[df['timepoint'].isin(columns)]
+def get_dummies_timepoints(df, timepts):
+    col_retain_df = df[df['timepoint'].isin(timepts)]
     col_dummies = pd.get_dummies(col_retain_df, drop_first=True, columns=['timepoint'])
     return col_dummies
 
