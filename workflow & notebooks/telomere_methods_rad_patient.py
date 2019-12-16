@@ -1387,6 +1387,7 @@ def graph_cluster_groups(df, target=None, hue=None):
     ax = sns.lineplot(x='timepoint', y=target, data=df, hue=hue, legend='full',
             palette=sns.color_palette(flatui[:len(df[hue].unique())]))
     plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0)
+    plt.setp(ax.get_xticklabels(), rotation=45)
     
 
 def graph_clusters_per_patient(df, target=None, 
