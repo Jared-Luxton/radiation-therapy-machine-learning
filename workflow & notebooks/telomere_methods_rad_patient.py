@@ -1335,11 +1335,10 @@ def plot_dendogram(Z, target=None, indexer=None):
         plt.show()
 
         
-def plot_results(timeSeries, D, cut_off_level):
+def plot_results(timeSeries, D, cut_off_level, y_size, x_size):
     result = pd.Series(hac.fcluster(D, cut_off_level, criterion='maxclust'))
-    clusters = result.unique()       
-    figX = 11; figY = 11
-    fig = plt.subplots(figsize=(figX, figY))   
+    clusters = result.unique() 
+    fig = plt.subplots(figsize=(x_size, y_size))   
     mimg = math.ceil(cut_off_level/2.0)
     gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])   
     for ipic, c in enumerate(clusters):
@@ -1352,7 +1351,9 @@ def plot_results(timeSeries, D, cut_off_level):
     return result
         
         
-def cluster_data_return_df(df, target='telo means', cut_off_n=3):
+def cluster_data_return_df(df, target='telo means', cut_off_n=3, 
+                           metric=myMetric, method='single',
+                           y_size=5, x_size=10):
     df = df.copy()
     # preparing data
     if '1 non irrad' in df['timepoint'].unique():
@@ -1363,11 +1364,11 @@ def cluster_data_return_df(df, target='telo means', cut_off_n=3):
     df.set_index('patient id', inplace=True)
     
     # run the clustering    
-    cluster_Z = hac.linkage(df, method='single', metric=myMetric)
+    cluster_Z = hac.linkage(df, method=method, metric=metric)
     plot_dendogram(cluster_Z, target=target, indexer=df.index)
-    indexed_clusters = plot_results(df, cluster_Z, cut_off_n)
+    indexed_clusters = plot_results(df, cluster_Z, cut_off_n, y_size=y_size, x_size=x_size)
     
-#     # concat clusters to original df and return
+    # concat clusters to original df and return
     ready_concat = df.reset_index()
     clustered_index_df = pd.concat([ready_concat, indexed_clusters], axis=1)
     clustered_index_df.rename(columns={clustered_index_df.columns[-1]: f'{target} cluster groups',
@@ -1390,18 +1391,20 @@ def graph_cluster_groups(df, target=None, hue=None):
     plt.setp(ax.get_xticklabels(), rotation=45)
     
 
-def graph_clusters_per_patient(df, target=None, 
-                               y_dimen=2, x_dimen=2,
-                               fsize=(9,8)):
+def graph_clusters_per_patient(df, target=None, cluster_name=None,
+                               y_dimen=2, x_dimen=2, fsize=(9,8)):
+    if cluster_name == None:
+        cluster_name = f'{target} cluster groups'
+        
     fig, ax = plt.subplots(y_dimen,x_dimen, sharex='col', sharey='row', figsize=fsize)
     axes = ax.ravel()
-    n_groups = df[f'{target} cluster groups'].nunique()
+    n_groups = df[cluster_name].nunique()
 
     for i in range(1, n_groups + 1):
-        data_clusters = df[df[f'{target} cluster groups'] == i]
+        data_clusters = df[df[cluster_name] == i]
         print(f'{target} CLUSTER {i} | patient IDs: {list(data_clusters["patient id"].unique())}')
         sns.lineplot(x='timepoint', y=target, data=data_clusters, hue='patient id', legend=False, ax=axes[i-1],
                      palette=sns.color_palette("Set1", data_clusters['patient id'].nunique()))
         axes[i-1].set_title((f'Cluster number {i}'), fontsize=15, fontweight='bold')      
     for ax in fig.axes:
-        plt.setp(ax.get_xticklabels(), rotation=45)
+        plt.setp(ax.get_xticklabels(), horizontalalignment='right', rotation=45)
