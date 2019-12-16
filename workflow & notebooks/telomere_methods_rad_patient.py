@@ -5,6 +5,9 @@ import numpy as np
 from pandas import ExcelWriter
 from pandas import ExcelFile
 import re
+from ast import literal_eval
+import more_itertools
+import math
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
@@ -16,9 +19,6 @@ from statistics import mean
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 from scipy import stats
-
-from ast import literal_eval
-import more_itertools
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
@@ -32,6 +32,8 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_score
+import scipy.cluster.hierarchy as hac
+import matplotlib.gridspec as gridspec
 
 def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
 
@@ -1069,7 +1071,6 @@ class clean_data(BaseEstimator, TransformerMixin):
 ########################################################################################################
 
 
-
 class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
     def __init__(self, adjust_clonality=True, combine_alike_aberr=True, drop_what_timepoint='3 B'):
         self.adjust_clonality = adjust_clonality
@@ -1272,12 +1273,7 @@ class make_target_merge(BaseEstimator, TransformerMixin):
         
         complete = X.merge(fourC_means[['patient id', target_4C]], on='patient id')
         complete = complete.merge(irrad4Gy_means[['patient id', target_irr4Gy]], on='patient id')
-        complete = complete[complete['timepoint'] != '4 C'].copy()
-        
-#         if self.target_type == 'encoded':
-#             complete['4 C encoded mean aberration index'] = 'temp'
-#             complete = complete.apply(self.encode_target_4C, axis=1)
-        
+        complete = complete[complete['timepoint'] != '4 C'].copy()        
         complete.drop([target_irr4Gy], axis=1, inplace=True)
         return complete
         
@@ -1305,3 +1301,106 @@ def xgboost_hyper_param(learning_rate, n_estimators, max_depth,
                        gamma=gamma, objective='reg:squarederror')
     
     return np.mean(cross_val_score(clf, X_train, y_train, cv=5, scoring='neg_mean_absolute_error'))
+
+
+    encode_dict = {'1 non irrad' : 1, '2 irrad @ 4 Gy': 2, '3 B': 3, '4 C': 4}
+    return encode_dict[row]
+
+
+################################################################################
+
+###############              CLUSTERING ANALYSES                 ###############
+
+################################################################################
+
+
+def encode_timepts(row):
+    encode_dict = {'1 non irrad' : 1, '2 irrad @ 4 Gy': 2, '3 B': 3, '4 C': 4}
+    return encode_dict[row]
+
+
+def myMetric(x, y):
+    r = stats.pearsonr(x, y)[0]
+    return 1 - r 
+
+
+def plot_dendogram(Z, target=None, indexer=None):
+    with plt.style.context('fivethirtyeight' ): 
+        plt.figure(figsize=(10, 2.5))
+        plt.title(f'Dendrogram of {target} clustering', fontsize=25, fontweight='bold')
+        plt.xlabel('patient IDs', fontsize=25, fontweight='bold')
+        plt.ylabel('distance', fontsize=25, fontweight='bold')
+        hac.dendrogram(Z, labels=indexer, leaf_rotation=90.,    # rotates the x axis labels
+                        leaf_font_size=15., ) # font size for the x axis labels
+        plt.show()
+
+        
+def plot_results(timeSeries, D, cut_off_level):
+    result = pd.Series(hac.fcluster(D, cut_off_level, criterion='maxclust'))
+    clusters = result.unique()       
+    figX = 11; figY = 11
+    fig = plt.subplots(figsize=(figX, figY))   
+    mimg = math.ceil(cut_off_level/2.0)
+    gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])   
+    for ipic, c in enumerate(clusters):
+        cluster_index = result[result==c].index
+        print(ipic, "Cluster number %d has %d elements" % (c, len(cluster_index)))
+        ax1 = plt.subplot(gs[ipic])
+        ax1.plot(timeSeries.T.iloc[:,cluster_index])
+        ax1.set_title((f'Cluster number {c}'), fontsize=15, fontweight='bold')      
+    plt.show()
+    return result
+        
+        
+def cluster_data_return_df(df, target='telo means', cut_off_n=3):
+    df = df.copy()
+    # preparing data
+    if '1 non irrad' in df['timepoint'].unique():
+        df['timepoint'] = df['timepoint'].apply(lambda row: encode_timepts(row))
+    df = df[['patient id', 'timepoint', target]].copy()
+    df = df.pivot(index='patient id', values=target, columns='timepoint').reset_index()
+    df.drop(11, inplace=True, axis=0)
+    df.set_index('patient id', inplace=True)
+    
+    # run the clustering    
+    cluster_Z = hac.linkage(df, method='single', metric=myMetric)
+    plot_dendogram(cluster_Z, target=target, indexer=df.index)
+    indexed_clusters = plot_results(df, cluster_Z, cut_off_n)
+    
+#     # concat clusters to original df and return
+    ready_concat = df.reset_index()
+    clustered_index_df = pd.concat([ready_concat, indexed_clusters], axis=1)
+    clustered_index_df.rename(columns={clustered_index_df.columns[-1]: f'{target} cluster groups',
+                                       1: '1 non irrad',
+                                       2: '2 irrad @ 4 Gy',
+                                       3: '3 B',
+                                       4: '4 C'}, inplace=True)
+    melted = clustered_index_df.melt(id_vars=['patient id', f'{target} cluster groups'], 
+                                     var_name='timepoint', value_name=target)
+    return melted
+
+
+def graph_cluster_groups(df, target=None, hue=None):
+    flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+    
+    ax = sns.set(font_scale=1.5)
+    ax = sns.lineplot(x='timepoint', y=target, data=df, hue=hue, legend='full',
+            palette=sns.color_palette(flatui[:len(df[hue].unique())]))
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0)
+    
+
+def graph_clusters_per_patient(df, target=None, 
+                               y_dimen=2, x_dimen=2,
+                               fsize=(9,8)):
+    fig, ax = plt.subplots(y_dimen,x_dimen, sharex='col', sharey='row', figsize=fsize)
+    axes = ax.ravel()
+    n_groups = df[f'{target} cluster groups'].nunique()
+
+    for i in range(1, n_groups + 1):
+        data_clusters = df[df[f'{target} cluster groups'] == i]
+        print(f'{target} CLUSTER {i} | patient IDs: {list(data_clusters["patient id"].unique())}')
+        sns.lineplot(x='timepoint', y=target, data=data_clusters, hue='patient id', legend=False, ax=axes[i-1],
+                     palette=sns.color_palette("Set1", data_clusters['patient id'].nunique()))
+        axes[i-1].set_title((f'Cluster number {i}'), fontsize=15, fontweight='bold')      
+    for ax in fig.axes:
+        plt.setp(ax.get_xticklabels(), rotation=45)
