@@ -481,9 +481,7 @@ def quartile_cts_rel_to_df1(df1, df2):
     df2 = pd.DataFrame(df2)
     
     quartile_1 = df2[df2 <= df1.quantile(0.25)].count()
-    
     quartile_2_3 = df2[(df2 > df1.quantile(0.25)) & (df2 < df1.quantile(0.75))].count()
-
     quartile_4 = df2[df2 >= df1.quantile(0.75)].count()
     
     return float(quartile_1.values), float(quartile_2_3.values), float(quartile_4.values)
@@ -627,19 +625,17 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
         
 
 
-def color_seaborn_histogram(data, ax, bins):
+def color_seaborn_histogram(data, ax, n_bins, bin_vals):
     
     """
     rewriting individual telomere coloring scheme for seaborn.. from my original implementation in pandas/matplotlib
 
     provides access to values of bin edges:
     bin_vals = np.histogram(test, bins)[1]
-
     access to objects for coloring:
     ax.patches 
     
     usage:
-    
     test = exploded_telos_all_patients_df[exploded_telos_all_patients_df['timepoint'] == '1 non irrad']['telo data exploded']
     ax = sns.set(font_scale=1)
     ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
@@ -652,17 +648,31 @@ def color_seaborn_histogram(data, ax, bins):
     """   
         
     for a in range(len(ax.patches)):
-        if bin_vals[a] < np.quantile(test, 0.25):
+        if bin_vals[a] < np.quantile(data, 0.25):
             ax.patches[a].set_facecolor('#fdff38')
-        elif np.quantile(test, 0.25) < bin_vals[a] and bin_vals[a] <= np.quantile(test, 0.50):
+        elif np.quantile(data, 0.25) < bin_vals[a] and bin_vals[a] <= np.quantile(data, 0.50):
             ax.patches[a].set_facecolor('#d0fefe')
-        elif np.quantile(test, 0.50) < bin_vals[a] and bin_vals[a] <= np.quantile(test, 0.75):
+        elif np.quantile(data, 0.50) < bin_vals[a] and bin_vals[a] <= np.quantile(data, 0.75):
             ax.patches[a].set_facecolor('#d0fefe')
-        elif bin_vals[a] > np.quantile(test, 0.75): 
+        elif bin_vals[a] > np.quantile(data, 0.75): 
             ax.patches[a].set_facecolor('#ffbacd')
             
+        
+def plot_histogram_colored_stylizer(data=None, ax=None, n_bins=45):
+    sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+    fig = plt.figure(figsize=(8,4))
+    sns.distplot(data, hist=True, kde=False, bins=n_bins, hist_kws=dict(alpha=.9), ax=ax)
+    bin_vals = np.histogram(data, n_bins)[1]   
+    color_seaborn_histogram(data=data, ax=ax, n_bins=n_bins, bin_vals=bin_vals)
+    
+    
+def grab_telo_data(patient_id_iterator=None, timepoint=None, df=None):
+    data = df[(df['patient id'] == patient_id_iterator) &
+              (df['timepoint'] == timepoint)]
+    telos = data['individual telomeres']
+    return telos
             
-            
+        
 def make_timepoint_col(row):
     if 'A' in row:
         row = '1 non irrad'
