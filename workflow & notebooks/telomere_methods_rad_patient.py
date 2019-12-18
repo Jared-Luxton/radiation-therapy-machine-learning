@@ -47,10 +47,12 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
 #     i.e the data structure is:
 
 #     dict = {
-#     patient_IDnumber = 
-#     {SW#A non irrad: [telos data, chr aberr data], 
-#     SW#A irrad @ 4 Gy: [telos data, chr aberr data]},
-
+#     patient_IDnumber: {SW#A non irrad: [telos data, chr aberr data],
+#                        SW#A irrad @ 4 Gy: [telos data, chr aberr data],
+#                        SW#B: [telos data, chr aberr data],
+#                        SW#C: [telos data, chr aberr data]
+# 
+#     etc.},
 #     etc.
 #     }
 
@@ -59,8 +61,10 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
 #     all_patients_dict = {
 #     '1' = {
 #     'SW1A non irrad': ['telomere data', 'chr aberr data'],
-#     'SW1A irrad @ 4 Gy': ['telomere data', ' chr aberr data']},
-
+#     'SW1A irrad @ 4 Gy': ['telomere data', 'chr aberr data']
+#     'SW1B': ['telomere data', 'chr aberr data'],
+#     'SW1C': ['telomere data', 'chr aberr data']
+#     },
 #     etc. for patients 1 - 16 (less #4 missing)
 #     }
 
@@ -74,32 +78,26 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
         
             try:
                 df = pd.read_excel(file)
-
             except:
                 print('File not found..')
                 return -1
-
+            
             print(file.name, 'data extraction in progress..') 
-#                   'it works peggy!! <3 <3 !!')
-           
-            if 'chr' not in file.name:
-                
-                telo_data = extract_and_clean_telos(df, file.name)
 
+            if 'chr' not in file.name:      
+                telo_data = extract_and_clean_telos(df, file.name)
             else:
                 continue
 
             file = file.name.replace('.xlsx', '').rstrip()
             data_list = []
             file_chr = ''
-
-            
             num, num2 = capture_patient_sample_ID(file)
 
             if 'chr' in file:
                 file_chr = file
                 file = file.replace('chr','').rstrip()
-
+                
             if file[num:num2] not in all_patients_dict.keys():
                 all_patients_dict[file[num:num2]] = {file: []}
 
@@ -136,36 +134,26 @@ def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
                         all_patients_dict[file[num:num2]][file].sort()
                     elif 'chr' in file_chr:
                         all_patients_dict[file[num:num2]][file].append(chr_data)
-                        all_patients_dict[file[num:num2]][file].sort()
-                        
+                        all_patients_dict[file[num:num2]][file].sort()                
     print('completed file collection')
     return all_patients_dict
 
 
 def generate_dictionary_from_TeloLength_data(patharg):
-
     all_patients_dict = {}
-
     for file in os.scandir(patharg):
         if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
-        
             try:
                 df = pd.read_excel(file)
-
             except:
                 print('File not found..')
                 return -1
 
-            print(file.name, 'data extraction in progress..') 
-#                   'it works peggy!! <3 <3 !!')
-                
+            print(file.name, 'data extraction in progress..')   
             telo_data = extract_and_clean_telos(df, file.name)
-
-
             file = file.name.replace('.xlsx', '').rstrip()
             data_list = []
             file_chr = ''
-
             num, num2 = capture_patient_sample_ID(file)
 
             if file[num:num2] not in all_patients_dict.keys():
@@ -175,25 +163,19 @@ def generate_dictionary_from_TeloLength_data(patharg):
                     all_patients_dict[file[num:num2]][file] = data_list
                     data_list.append(telo_data)
                     data_list.sort()
-       
-
                 elif len(all_patients_dict[file[num:num2]][file]) == 1:
                     data_list.append(telo_data)
                     data_list.sort()
-
 
             elif file[num:num2] in all_patients_dict.keys():
                 if file in all_patients_dict[file[num:num2]]:
                     all_patients_dict[file[num:num2]][file].append(telo_data)
                     all_patients_dict[file[num:num2]][file].sort()
-     
-
                 elif file not in all_patients_dict[file[num:num2]]:     
                     all_patients_dict[file[num:num2]][file] = data_list
                     all_patients_dict[file[num:num2]][file].append(telo_data)
-                    all_patients_dict[file[num:num2]][file].sort()
-
-                        
+                    all_patients_dict[file[num:num2]][file].sort() 
+                    
     print('completed file collection')
     return all_patients_dict
 
@@ -561,8 +543,8 @@ def score_model_accuracy_metrics(models, X, y):
     return score_df, score_list
 
 
-def histogram_plot_groups(x=None, data=None, 
-                                 groupby=None, iterable=None):
+def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None,
+                          n_bins=60):
     
     group_df = data.groupby(groupby)
     
@@ -573,7 +555,7 @@ def histogram_plot_groups(x=None, data=None,
             three_B = group_df.get_group('3 B').dropna(axis=0)[x]
             four_C = group_df.get_group('4 C').dropna(axis=0)[x]
             
-            graph_four_histograms(non_irrad, 60, non_irrad, irrad_4_Gy, three_B, four_C,
+            graph_four_histograms(non_irrad, n_bins, non_irrad, irrad_4_Gy, three_B, four_C,
                                                 '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C')
     
     elif groupby == 'patient id':
@@ -585,22 +567,11 @@ def histogram_plot_groups(x=None, data=None,
             three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
             four_C = plot_df[plot_df['timepoint'] == '4 C'][x]
             
-            graph_four_histograms(non_irrad, 60, non_irrad, irrad_4_Gy, three_B, four_C,
-                                                 f'patient #{item} 1 non rad', 
-                                                 f'patient #{item} 2 irrad @ 4 Gy', 
-                                                 f'patient #{item} 3 B', 
-                                                 f'patient #{item} 4 C')
-
-#             n_bins = 60
-#             fig, axs = plt.subplots(2, 2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
-
-#             ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
-#     #         ax = sns.set(font_scale=1.4)
-
-#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, non_irrad, non_irrad, f'patient #{item} 1 non rad', 0, 0)
-#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, irrad_4_Gy, non_irrad, f'patient #{item} 2 irrad @ 4 Gy', 0, 1)
-#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, three_B,  non_irrad, f'patient #{item} 3 B', 1, 0)
-#             histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, four_C,  non_irrad, f'patient #{item} 4 C', 1, 1)
+            graph_four_histograms(non_irrad, n_bins, non_irrad, irrad_4_Gy, three_B, four_C,
+                                  f'patient #{item} 1 non rad', 
+                                  f'patient #{item} 2 irrad @ 4 Gy', 
+                                  f'patient #{item} 3 B', 
+                                  f'patient #{item} 4 C')
 
     #         plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
 
@@ -608,7 +579,9 @@ def graph_four_histograms(quartile_ref, n_bins, df1, df2, df3, df4,
                                                 name1, name2, name3, name4):
     
     n_bins = n_bins
-    fig, axs = plt.subplots(2,2, sharey=True, sharex=True, constrained_layout=True, figsize = (14, 9))
+    fig, axs = plt.subplots(2,2, sharey=True, sharex=True, 
+                            constrained_layout=True, 
+                            figsize = (8, 6))
     sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
 
     histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df1, quartile_ref, name1, 0, 0)
@@ -634,16 +607,16 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
         elif bins[a] > np.quantile(astroquartile, 0.75): 
             patches[a].set_facecolor('#ffbacd')
             
-    axs[axsNUMone,axsNUMtwo].set_title(f"{astroname}", fontsize=18,)
+    axs[axsNUMone,axsNUMtwo].set_title(f"{astroname}", fontsize=14,)
     axs[axsNUMone,axsNUMtwo].tick_params(labelsize=12)
                 
-    font_axes=18
+    font_axes=14
 
     if axsNUMone == 0 and axsNUMtwo == 0:
-        axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+        axs[axsNUMone,axsNUMtwo].set_ylabel("Individual Telomere Counts", fontsize=font_axes)
 
     if axsNUMone == 1 and axsNUMtwo == 0:
-        axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
+        axs[axsNUMone,axsNUMtwo].set_ylabel("Individual Telomere Counts", fontsize=font_axes)
         axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
 
     if axsNUMone == 1 and axsNUMtwo == 1:
@@ -694,15 +667,12 @@ def make_timepoint_col(row):
     if 'A' in row:
         row = '1 non irrad'
         return row
-    
     elif 'B' in row:
         row = '3 B'
         return row
-    
     elif 'C' in row:
         row = '4 C'
         return row
-    
     else:
         pass
 
@@ -1360,7 +1330,8 @@ def cluster_data_return_df(df, target='telo means', cut_off_n=3,
         df['timepoint'] = df['timepoint'].apply(lambda row: encode_timepts(row))
     df = df[['patient id', 'timepoint', target]].copy()
     df = df.pivot(index='patient id', values=target, columns='timepoint').reset_index()
-    df.drop(11, inplace=True, axis=0)
+    if 13 in df['patient id'].unique() and 'telo means' in df.columns:
+        df.drop(11, inplace=True, axis=0)
     df.set_index('patient id', inplace=True)
     
     # run the clustering    
