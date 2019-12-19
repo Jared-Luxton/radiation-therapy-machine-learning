@@ -35,111 +35,38 @@ from sklearn.model_selection import cross_val_score
 import scipy.cluster.hierarchy as hac
 import matplotlib.gridspec as gridspec
 
-def generate_dictionary_from_TeloLength_and_Chr_aberr_Data(patharg):
-
-#     """
-#     opens raw telomere length count excel files from imageJ analyses and
-#     extracts the individual mean telomere lengths to make histograms;
-#     opens chromosome rearrangement frequency files and extracts data
-#     both telos & chr rearrangement frequencies are stored as values to their
-#     sample timepoint keys, which themselves are values to patient id# key
-
-#     i.e the data structure is:
-
-#     dict = {
-#     patient_IDnumber: {SW#A non irrad: [telos data, chr aberr data],
-#                        SW#A irrad @ 4 Gy: [telos data, chr aberr data],
-#                        SW#B: [telos data, chr aberr data],
-#                        SW#C: [telos data, chr aberr data]
-# 
-#     etc.},
-#     etc.
-#     }
-
-#     i.e:
-
-#     all_patients_dict = {
-#     '1' = {
-#     'SW1A non irrad': ['telomere data', 'chr aberr data'],
-#     'SW1A irrad @ 4 Gy': ['telomere data', 'chr aberr data']
-#     'SW1B': ['telomere data', 'chr aberr data'],
-#     'SW1C': ['telomere data', 'chr aberr data']
-#     },
-#     etc. for patients 1 - 16 (less #4 missing)
-#     }
-
-#     pass the directory where the telomere length excel files (.xlsx) are located
-#     """
-
-    all_patients_dict = {}
-
-    for file in os.scandir(patharg):
-        if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
-        
-            try:
-                df = pd.read_excel(file)
-            except:
-                print('File not found..')
-                return -1
-            
-            print(file.name, 'data extraction in progress..') 
-
-            if 'chr' not in file.name:      
-                telo_data = extract_and_clean_telos(df, file.name)
-            else:
-                continue
-
-            file = file.name.replace('.xlsx', '').rstrip()
-            data_list = []
-            file_chr = ''
-            num, num2 = capture_patient_sample_ID(file)
-
-            if 'chr' in file:
-                file_chr = file
-                file = file.replace('chr','').rstrip()
-                
-            if file[num:num2] not in all_patients_dict.keys():
-                all_patients_dict[file[num:num2]] = {file: []}
-
-                if len(all_patients_dict[file[num:num2]][file]) == 0:
-                    all_patients_dict[file[num:num2]][file] = data_list
-                    if 'chr' not in file_chr:
-                        data_list.append(telo_data)
-                        data_list.sort()
-                    elif 'chr' in file_chr:
-                        data_list.append(chr_data)
-                        data_list.sort()
-
-                elif len(all_patients_dict[file[num:num2]][file]) == 1:
-                    if 'chr' not in file_chr:
-                        data_list.append(telo_data)
-                        data_list.sort()
-                    elif 'chr' in file_chr:
-                        data_list.append(chr_data)
-                        data_list.sort()
-
-            elif file[num:num2] in all_patients_dict.keys():
-                if file in all_patients_dict[file[num:num2]]:
-                    if 'chr' not in file_chr:
-                        all_patients_dict[file[num:num2]][file].append(telo_data)
-                        all_patients_dict[file[num:num2]][file].sort()
-                    elif 'chr' in file_chr:
-                        all_patients_dict[file[num:num2]][file].append(chr_data)
-                        all_patients_dict[file[num:num2]][file].sort()
-
-                elif file not in all_patients_dict[file[num:num2]]:     
-                    all_patients_dict[file[num:num2]][file] = data_list
-                    if 'chr' not in file_chr:
-                        all_patients_dict[file[num:num2]][file].append(telo_data)
-                        all_patients_dict[file[num:num2]][file].sort()
-                    elif 'chr' in file_chr:
-                        all_patients_dict[file[num:num2]][file].append(chr_data)
-                        all_patients_dict[file[num:num2]][file].sort()                
-    print('completed file collection')
-    return all_patients_dict
-
-
+       
 def generate_dictionary_from_TeloLength_data(patharg):
+    """
+    opens raw telomere length measurement excel files from imageJ analyses and
+    extracts the mean value of individual telomere length measurements to make histograms;
+    telos are stored as values to their sample timepoint keys, which themselves 
+    are values to patient id# key
+
+    i.e the data structure is:
+
+    dict = {
+    patient_IDnumber: {SW#A non irrad: [telos data],
+                       SW#A irrad @ 4 Gy: [telos data],
+                       SW#B: [telos data],
+                       SW#C: [telos data],
+                       },
+    etc.
+    }
+
+    i.e:
+
+    all_patients_dict = {
+    '1' = {'SW1A non irrad': ['telomere data'],
+           'SW1A irrad @ 4 Gy': ['telomere data'],
+           'SW1B': ['telomere data'],
+           'SW1C': ['telomere data'],
+          },
+    etc. for patients 1 - 16 (less #4 missing)
+    }
+    USAGE:
+    pass the directory where the telomere length excel files (.xlsx) are located
+    """
     all_patients_dict = {}
     for file in os.scandir(patharg):
         if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
@@ -180,21 +107,13 @@ def generate_dictionary_from_TeloLength_data(patharg):
     return all_patients_dict
 
 
-def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict, option='no graphs'):
-
+def generate_dataframe_from_dict(all_patients_dict):
     data = []
-    print('To display graphs pass the value "yes graphs" to the function',
-          'otherwise default option="no graphs"')
-
     for i in range(1,17):
         if str(i) in all_patients_dict.keys():
             for sample in sorted(all_patients_dict[str(i)].keys()):
                 telos = all_patients_dict[str(i)][sample][0]
-                # chr = all_patients_dict[str(i)[timepoint][1]
-                chr_d = 'chr data'
-                working_status = 'IT WORKS PEGGY <333'
-            
-        
+#                 IT WORKS PEGGY <333
                 if 'hTERT' in sample:
                     #average of all hTERT samples is 79.9762
                     #CF = correction factor
@@ -213,77 +132,44 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_A_nonRAD_name = sample
                     SW_A_nonRAD = telos
-#                     telos_samp = telos
-                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
+                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos)
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
-                    data.append([sample[num:num2], '1 ' + 'non irrad', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
+                    data.append([sample[num:num2], '1 ' + 'non irrad', telos_samp.multiply(CF_mean), individ_cells])
 
                 elif 'irrad @ 4 Gy' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_A_irrad4Gy_name = sample
                     SW_A_irrad4Gy = telos
-#                     telos_samp = telos
-                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
+                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos)
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
-                    data.append([sample[num:num2], '2 ' + 'irrad @ 4 Gy', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
+                    data.append([sample[num:num2], '2 ' + 'irrad @ 4 Gy', telos_samp.multiply(CF_mean), individ_cells])
 
                 elif 'B' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_B_name = sample
                     SW_B = telos
-#                     telos_samp = telos
-                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
+                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos)
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
-                    data.append([sample[num:num2], '3 ' + 'B', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
+                    data.append([sample[num:num2], '3 ' + 'B', telos_samp.multiply(CF_mean), individ_cells])
                     
                 elif 'C' in sample:
                     num, num2 = capture_patient_sample_ID(sample)
                     SW_C_name = sample
                     SW_C = telos
-#                     telos_samp = telos
-                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos, 'rsamp')
+                    telos_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, telos)
                     telos_samp = telos_samp.iloc[:,0]
                     individ_cells = chunk_individual_telos_to_cells(telos_samp.multiply(CF_mean), 92)
-                    data.append([sample[num:num2], '4 ' + 'C', telos_samp.multiply(CF_mean), individ_cells, chr_d, working_status])
+                    data.append([sample[num:num2], '4 ' + 'C', telos_samp.multiply(CF_mean), individ_cells])
 
                 else:
                     print('error with making dataframe from dict..')
                     print(sample)
                     continue
-            
-            if option == 'yes graphs':
-                
-                SW_A_nonRAD_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, SW_A_nonRAD, 'rsamp')
-                SW_A_irrad4Gy_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, SW_A_irrad4Gy, 'rsamp')
-                SW_B_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, SW_B, 'rsamp')
-                SW_C_samp = gen_missing_values_andimpute_or_randomsampledown(50, 92, SW_C, 'rsamp')
-
-                SW_A_nonRADarray = SW_A_nonRAD_samp.to_numpy()
-                SW_A_irrad4Gyarray = SW_A_irrad4Gy_samp.to_numpy()
-                SW_Barray = SW_B_samp.to_numpy()
-                SW_Carray = SW_C_samp.to_numpy()
-
-
-                n_bins = 50
-                fig, axs = plt.subplots(2, 2, sharey=True, tight_layout=False, figsize=(20, 13))
-
-                histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, SW_A_nonRAD_samp, SW_A_nonRADarray, SW_A_nonRAD_name, 0, 0)
-                histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, SW_A_irrad4Gy_samp, SW_A_nonRADarray, SW_A_irrad4Gy_name, 0, 1)
-                histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, SW_B_samp, SW_A_nonRADarray, SW_B_name, 1, 0)
-                histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, SW_C_samp, SW_A_nonRADarray, SW_C_name, 1, 1)
-
-                if 'BJ1' not in sample and 'hTERT' not in sample:
-                    plt.savefig(f'SW{sample[2]}_histogram.pdf')
-                plt.show()
-            
-            else:
-                continue
-                
-    
-    all_patients_df = pd.DataFrame(data, columns=['patient id', 'timepoint', 'telo data', 'cell data', 'chr data', 'status'])
+                     
+    all_patients_df = pd.DataFrame(data, columns=['patient id', 'timepoint', 'telo data', 'cell data'])
     all_patients_df['patient id'] = all_patients_df['patient id'].astype('int')
     all_patients_df = all_patients_df.sort_values(by=['patient id', 'timepoint'], ascending=True, axis=0).reset_index(drop=True)
     all_patients_df['telo means'] = all_patients_df['telo data'].apply(lambda row: np.mean(row))
@@ -291,42 +177,43 @@ def generate_dataframe_from_dict_and_generate_histograms_stats(all_patients_dict
     all_patients_df['Q1'] = 'telos nonRAD Q1 <0.25'
     all_patients_df['Q2-3'] = 'telos nonRAD Q2-3 >0.25 & <0.75'
     all_patients_df['Q4'] = 'telos nonRAD Q4 >0.75'
+    
+    # counting telomeres per quartile
+    all_patients_df = calculate_apply_teloQuartiles_dataframe(all_patients_df.copy())
+
+    for quart in ['Q1', 'Q2-3', 'Q4']:
+        all_patients_df[quart] = all_patients_df[quart].astype('int64')
 
     return all_patients_df
 
 
+def gen_missing_values_andimpute_or_randomsampledown(n_cells, telosPercell, df):
 
-def gen_missing_values_andimpute_or_randomsampledown(n_cells, telosPercell, astro_df, option=None):
-    #if wanted to do for max. possible telomeres, just replace the subtraction with max telos
-    # print('substracts second astro from first.. equalizing second to first')
+    if df.size > 4600:
+        dfsampled = df.sample(4600)
+        return dfsampled
 
-    if astro_df.size > 4600:
-        astro_dfsampled = astro_df.sample(4600)
-        return astro_dfsampled
-
-    if astro_df.size > 25 and astro_df.size <= 2300:
-        missing_data_difference = abs( (n_cells * telosPercell) - astro_df.size )
-        rsampled = astro_df.sample(missing_data_difference, replace=True, random_state=28)
+    if df.size > 25 and df.size <= 2300:
+        missing_data_difference = abs((n_cells * telosPercell) - df.size)
+        rsampled = df.sample(missing_data_difference, replace=True, random_state=28)
         rsampled = rsampled * 0.99999
-        concat_ed = pd.concat([rsampled, astro_df], sort=False)
+        concat_ed = pd.concat([rsampled, df], sort=False)
         np.random.shuffle(concat_ed.to_numpy())
         concat_ed.reset_index(drop=True, inplace=True)
         return concat_ed
 
-    if astro_df.size > 25 and astro_df.size < 4600:
-        missing_data_difference = abs( (n_cells * telosPercell) - astro_df.size )
-        if option == 'rsamp':
-            rsampled = astro_df.sample(missing_data_difference, random_state=28)
-            rsampled = rsampled * 0.99999
-            concat_ed = pd.concat([rsampled, astro_df], sort=False)
-            np.random.shuffle(concat_ed.to_numpy())
-            concat_ed.reset_index(drop=True, inplace=True)
-            return concat_ed
-        else:
-            return astro_df
-    else:
-        return astro_df
+    if df.size > 25 and df.size < 4600:
+        missing_data_difference = abs((n_cells * telosPercell) - df.size)
+        rsampled = df.sample(missing_data_difference, random_state=28)
+        rsampled = rsampled * 0.99999
+        concat_ed = pd.concat([rsampled, df], sort=False)
+        np.random.shuffle(concat_ed.to_numpy())
+        concat_ed.reset_index(drop=True, inplace=True)
+        return concat_ed
     
+    else:
+        print('not count standardized.. error')
+        return df
     
     
 def chunk_individual_telos_to_cells(telos_samp, n_telos):
@@ -346,47 +233,7 @@ def chunk_individual_telos_to_cells(telos_samp, n_telos):
         cell_means.append(np.mean(cell)) 
     
     return pd.Series(cell_means)
-    
-    
-    
-# def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
-
-#         astroarray = astroDF.to_numpy()
-
-#         N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
-
-#         for a in range(len(patches)):
-# #             print(bins)
-# #             [  0.   8.  16.  24.  32.  40.  48.  56.  64.  72.  80.  88.  96. 104.
-#         #  112. 120. 128. 136. 144. 152. 160. 168. 176. 184. 192. 200. 208. 216.
-#         #  224. 232. 240. 248. 256. 264. 272. 280. 288. 296. 304. 312. 320. 328.
-#         #  336. 344. 352. 360. 368. 376. 384. 392. 400.]
-
-#             if bins[a] <= np.quantile(astroquartile, 0.25):
-#                 patches[a].set_facecolor('#fdff38')
-#             elif np.quantile(astroquartile, 0.25) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.50):
-#                 patches[a].set_facecolor('#d0fefe')
-#             elif np.quantile(astroquartile, 0.50) < bins[a] and bins[a] <= np.quantile(astroquartile, 0.75):
-#                 patches[a].set_facecolor('#d0fefe')
-#             elif bins[a] > np.quantile(astroquartile, 0.75): 
-#                 patches[a].set_facecolor('#ffbacd')
-                
-#         font_axes=16
-
-#         if axsNUMone == 0 and axsNUMtwo == 0:
-#             axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
-
-#         if axsNUMone == 1 and axsNUMtwo == 0:
-#             axs[axsNUMone,axsNUMtwo].set_ylabel("Counts of Individual Telomeres", fontsize=font_axes)
-#             axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
-
-#         if axsNUMone == 1 and axsNUMtwo == 1:
-#             axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
-
-#         axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(12))
-            
-        
-
+         
 
 def capture_patient_sample_ID(file):
     if len(file) == 14:
@@ -394,31 +241,31 @@ def capture_patient_sample_ID(file):
         num = 2
         num2 = num + 1
         return num, num2
-
+    
     elif len(file) == 12:
         #it's BJ1 ctrl w/ 1 sample ID digit
         num = 10
         num2 = num+ 1
         return num, num2
-
+    
     elif 'hTERT' in file and len(file) == 17:
         #it's BJ-hTERT w/ 1 sample digit
         num = 15
         num2 = num + 1
         return num, num2
-
+    
     elif len(file) == 15:
         #it's patient id w/ 2 sample ID digits
         num = 2
         num2 = num + 2
         return num, num2
-
+    
     elif len(file) == 13:
         #it's BJ1 ctrl w/ 2 sample ID digits
         num = 10
         num2 = num + 2
         return num, num2
-
+    
     elif 'hTERT' in file and len(file) == 18:
         # it's BJ-hTERT w/ 2 sample digits
         num = 15
@@ -454,9 +301,10 @@ def extract_and_clean_telos(df, file_name):
 
     df.rename(columns={'Unnamed: 3':'Mean Individ Telos'}, inplace=True)
     mean_values_of_individual_telomere_lengths = (df['Mean Individ Telos'])
-    mean_values_of_individual_telomere_lengths = mean_values_of_individual_telomere_lengths.drop(labels=[5, 192, 379, 566, 753, 940, 1127, 1314,
-        1501, 1688, 1875, 2062, 2249, 2436, 2623, 2810, 2997, 3184, 3371, 3558, 3745, 3932, 4119, 4306, 4493, 4680, 4867, 5054, 5241, 5428,
-        5615, 5802, 5989, 6176, 6363, 6550, 6737, 6924, 7111, 7298, 7485, 7672, 7859, 8046, 8233, 8420, 8607, 8794, 8981, 9168])
+    mean_values_of_individual_telomere_lengths = mean_values_of_individual_telomere_lengths.drop(
+        labels=[5, 192, 379, 566, 753, 940, 1127, 1314, 1501, 1688, 1875, 2062, 2249, 2436, 2623, 2810, 2997, 3184, 
+                3371, 3558, 3745, 3932, 4119, 4306, 4493, 4680, 4867, 5054, 5241, 5428, 5615, 5802, 5989, 6176, 6363, 
+                6550, 6737, 6924, 7111, 7298, 7485, 7672, 7859, 8046, 8233, 8420, 8607, 8794, 8981, 9168])
 
     mean_values_of_individual_telomere_lengths = mean_values_of_individual_telomere_lengths.iloc[6:9350]
     meantelos_str_toNaN = pd.to_numeric(mean_values_of_individual_telomere_lengths, errors='coerce')
@@ -470,13 +318,13 @@ def extract_and_clean_telos(df, file_name):
     else:
         return mean_individ_df
     
-    
-    
-### FIND QUARTILES OF NON IRRAD TIMEPOINT & MAKE BASELINE..
-### find individual telomeres below the 0.25 percentile (a), between
-### the 0.25 & 0.75 percentile (b), & above the 0.75 percentile (c)
 
 def quartile_cts_rel_to_df1(df1, df2):
+    """
+    FIND QUARTILES OF NON IRRAD TIMEPOINT & MAKE BASELINE..
+    find individual telomeres below the 0.25 percentile (a), between
+    the 0.25 & 0.75 percentile (b), & above the 0.75 percentile (c)
+    """
     df1 = pd.DataFrame(df1)
     df2 = pd.DataFrame(df2)
     
@@ -485,23 +333,22 @@ def quartile_cts_rel_to_df1(df1, df2):
     quartile_4 = df2[df2 >= df1.quantile(0.75)].count()
     
     return float(quartile_1.values), float(quartile_2_3.values), float(quartile_4.values)
-#     return quartile_1, quartile_2_3, quartile_4
 
-
-
-### LOOP THROUGH DATAFRAME FOR EACH PATIENT, ESTABLISH BASELINE QUARTILES FOR INDIVIDUAL TELOMERES USING NON IRRAD 
-### SAMPLE TIMEPOINT.. THEN DETERMINES FOR EACH TIMEPOINT (irrad 4 Gy, B, C) HOW MANY TELOMERES REMAIN IN THOSE 
-### QUARTILES... FILLS OUT Q1, Q2-3, Q4 COLUMNS..
 
 def calculate_apply_teloQuartiles_dataframe(all_patients_df):
+    """
+    LOOP THROUGH DATAFRAME FOR EACH PATIENT, ESTABLISH BASELINE QUARTILES FOR INDIVIDUAL TELOMERES USING NON IRRAD 
+    SAMPLE TIMEPOINT.. THEN DETERMINES FOR EACH TIMEPOINT (irrad 4 Gy, B, C) HOW MANY TELOMERES REMAIN IN THOSE 
+    QUARTILES... FILLS OUT Q1, Q2-3, Q4 COLUMNS..
+    """
     
-    q1_row, q2_3_row, q4_row = 7, 8, 9
+    q1_row, q2_3_row, q4_row = 5, 6, 7
 
     for i, row in all_patients_df.iterrows():
         if 'non irrad' in row[1]:
             nonRAD = row[2]
-            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, nonRAD))
-
+            all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] =                  (quartile_cts_rel_to_df1(nonRAD, nonRAD))
+            
         elif 'irrad @ 4 Gy' in row[1]:
             all_patients_df.iat[i, q1_row], all_patients_df.iat[i, q2_3_row], all_patients_df.iat[i, q4_row] = (quartile_cts_rel_to_df1(nonRAD, row[2]))
 
@@ -517,32 +364,7 @@ def calculate_apply_teloQuartiles_dataframe(all_patients_df):
     return all_patients_df
 
 
-
-def score_model_accuracy_metrics(models, X, y):
-    
-    score_list = []
-    
-    X_train, X_valid, y_train, y_valid = train_test_split(X, y, random_state=1)
-    
-    for model_name in models:
-    
-        if model_name == 'XGBRegressor':
-            model = XGBRegressor(objective='reg:squarederror', random_state=0)
-        elif model_name == 'RandomForestRegressor':
-            model = RandomForestRegressor(n_estimators=100, random_state=1)
-            
-        model.fit(X_train, y_train)
-        predict_y = model.predict(X_valid)
-        mae = mean_absolute_error(y_valid, predict_y)
-        evs = explained_variance_score(y_valid, predict_y)
-        score_list.append([model, model_name, mae, evs])
-        
-    score_df = pd.DataFrame(score_list, columns=['model', 'model name', 'Mean Absolute Error', 'Explained Variance'])
-    return score_df, score_list
-
-
-def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None,
-                          n_bins=60):
+def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins=60):
     
     group_df = data.groupby(groupby)
     
@@ -558,8 +380,8 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None,
     
     elif groupby == 'patient id':
         for item in iterable:
-        
             plot_df = group_df.get_group(item)
+            
             non_irrad = plot_df[plot_df['timepoint'] == '1 non irrad'][x]
             irrad_4_Gy = plot_df[plot_df['timepoint'] == '2 irrad @ 4 Gy'][x]
             three_B = plot_df[plot_df['timepoint'] == '3 B'][x]
@@ -570,7 +392,6 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None,
                                   f'patient #{item} 2 irrad @ 4 Gy', 
                                   f'patient #{item} 3 B', 
                                   f'patient #{item} 4 C')
-
     #         plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
 
 def graph_four_histograms(quartile_ref, n_bins, df1, df2, df3, df4,
@@ -1331,17 +1152,18 @@ def plot_results(timeSeries, D, cut_off_level, y_size, x_size):
     return result
         
         
-def cluster_data_return_df(df, target='telo means', cut_off_n=3, 
+def cluster_data_return_df(df, target='telo means', cut_off_n=4, 
                            metric=myMetric, method='single',
-                           y_size=5, x_size=10):
-    df = df.copy()
+                           y_size=6, x_size=10):
+    
+    df = df[df['patient id'] != 13].copy()
     # preparing data
     if '1 non irrad' in df['timepoint'].unique():
         df['timepoint'] = df['timepoint'].apply(lambda row: encode_timepts(row))
     df = df[['patient id', 'timepoint', target]].copy()
     df = df.pivot(index='patient id', values=target, columns='timepoint').reset_index()
-    if 13 in df['patient id'].unique() and 'telo means' in df.columns:
-        df.drop(11, inplace=True, axis=0)
+#     if 13 in df['patient id'].unique() and 'telo means' in df.columns:
+#         df.drop(11, inplace=True, axis=0)
     df.set_index('patient id', inplace=True)
     
     # run the clustering    
