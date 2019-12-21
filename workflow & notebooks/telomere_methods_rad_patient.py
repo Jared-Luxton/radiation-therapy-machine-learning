@@ -34,7 +34,8 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_score
 import scipy.cluster.hierarchy as hac
 import matplotlib.gridspec as gridspec
-
+from scipy.stats import zscore
+from scipy.stats import ks_2samp
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
@@ -414,7 +415,7 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
 
     astroarray = astroDF.to_numpy()
 
-    N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(0, 400), edgecolor='black')
+    N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(-3.5, 6.5), edgecolor='black')
 
     for a in range(len(patches)):
         if bins[a] <= np.quantile(astroquartile, 0.25):
@@ -1211,3 +1212,29 @@ def graph_clusters_per_patient(df, target=None, cluster_name=None,
         axes[i-1].set_title((f'Cluster number {i}'), fontsize=15, fontweight='bold')      
     for ax in fig.axes:
         plt.setp(ax.get_xticklabels(), horizontalalignment='right', rotation=45)
+              
+              
+def eval_make_test_comparisons(iter_time1=None, iter_time2=None, timept_pairs=None, row=None, test=None,
+                               df_list=None, i=None, test_name=None, df=None):
+    pair1, pair2 = f"{iter_time2}:{iter_time1}", f"{iter_time1}:{iter_time2}"
+    if iter_time1 != iter_time2 and pair1 not in timept_pairs and pair2 not in timept_pairs:
+        stat, pvalue = test(df, df_list[i])
+#         pvalue = pvalue.round(6)
+        print(f'{test_name} | {iter_time1} vs {iter_time2} {pvalue}')
+        timept_pairs.append(pair1)
+        timept_pairs.append(pair2)
+        row.append([test_name, iter_time1, iter_time2, pvalue])
+    return timept_pairs, row
+              
+
+def z_norm_individual_telos(exploded_telos_df=None):
+    z_norm = pd.DataFrame()
+    df = exploded_telos_df
+    grouped_df = df.groupby('timepoint')
+    
+    for timept in df['timepoint'].unique():
+        timept_df = grouped_df.get_group(timept).copy()
+        timept_df['z-norm_individual_telos'] = zscore(timept_df['individual telomeres'])
+        timept_df.reset_index(drop=True, inplace=True)
+        z_norm = pd.concat([z_norm, timept_df], axis=0)
+    return z_norm
