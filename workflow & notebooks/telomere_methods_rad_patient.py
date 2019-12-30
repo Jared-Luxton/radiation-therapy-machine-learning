@@ -36,6 +36,10 @@ import scipy.cluster.hierarchy as hac
 import matplotlib.gridspec as gridspec
 from scipy.stats import zscore
 from scipy.stats import ks_2samp
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multicomp import MultiComparison
+import scikit_posthocs as sp
+from statsmodels.stats.anova import AnovaRM
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
@@ -365,7 +369,7 @@ def calculate_apply_teloQuartiles_dataframe(all_patients_df):
     return all_patients_df
 
 
-def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins=60):
+def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins=60, znorm=False):
     
     group_df = data.groupby(groupby)
     
@@ -377,7 +381,7 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
             four_C = group_df.get_group('4 C').dropna(axis=0)[x]
             
             graph_four_histograms(non_irrad, n_bins, non_irrad, irrad_4_Gy, three_B, four_C,
-                                                '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C')
+                                                '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C', znorm)
     
     elif groupby == 'patient id':
         for item in iterable:
@@ -392,11 +396,13 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
                                   f'patient #{item} 1 non rad', 
                                   f'patient #{item} 2 irrad @ 4 Gy', 
                                   f'patient #{item} 3 B', 
-                                  f'patient #{item} 4 C')
+                                  f'patient #{item} 4 C',
+                                  znorm)
     #         plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
 
-def graph_four_histograms(quartile_ref, n_bins, df1, df2, df3, df4,
-                                                name1, name2, name3, name4):
+def graph_four_histograms(quartile_ref, n_bins, 
+                          df1, df2, df3, df4,
+                          name1, name2, name3, name4, znorm):
     
     n_bins = n_bins
     fig, axs = plt.subplots(2,2, sharey=True, sharex=True, 
@@ -404,18 +410,19 @@ def graph_four_histograms(quartile_ref, n_bins, df1, df2, df3, df4,
                             figsize = (8, 6))
     sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
 
-    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df1, quartile_ref, name1, 0, 0)
-    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df2, quartile_ref, name2, 0, 1)
-    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df3, quartile_ref, name3, 1, 0)
-    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df4, quartile_ref, name4, 1, 1)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df1, quartile_ref, name1, 0, 0, znorm)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df2, quartile_ref, name2, 0, 1, znorm)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df3, quartile_ref, name3, 1, 0, znorm)
+    histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df4, quartile_ref, name4, 1, 1, znorm)
     
 #     plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
 
-def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo):
-
+def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquartile, astroname, axsNUMone, axsNUMtwo, znorm):
+    x_range = (0, 400)
+    if znorm == True:
+        x_range = (-3.5, 6.5) 
     astroarray = astroDF.to_numpy()
-
-    N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=(-3.5, 6.5), edgecolor='black')
+    N, bins, patches = axs[axsNUMone,axsNUMtwo].hist(astroarray, bins=n_bins, range=x_range, edgecolor='black')
 
     for a in range(len(patches)):
         if bins[a] <= np.quantile(astroquartile, 0.25):
@@ -723,6 +730,7 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
 def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
                           model=None, cv=5, scoring='neg_mean_absolute_error'):
     
+    row = []
     features = [col for col in train_set if col != target and col != 'patient id']
     
     X_train = train_set[features].copy()
@@ -745,20 +753,27 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
     print(f"MAE of predict_y_test & y_test: {mean_absolute_error(y_test, predict_y_test)}")
     print(f'R2 between predict_y_test & y_test: {r2_score(y_test, predict_y_test)}')
     
-    return model
+    row.append(['XGBoost', features, target, round(scores.mean(), 4),
+                                             round(scores.std(), 4),
+                                             round(mean_absolute_error(y_test, predict_y_test), 4), 
+                                             round(r2_score(y_test, predict_y_test), 4)])
+    
+    return model, row 
 
 
 def predict_target_4C_compare_actual(telo_data=None, test_set=None, 
                                      model=None, target='4 C telo means',
-                                     clean_process_pipe=None):
+                                     clean_process_pipe=None, verbose=True):
 
     telo_data = telo_data.copy()
     test_set_copy = test_set.copy()
     test_set_cleaner = clean_process_pipe
-    test_set_cleaned = test_set_cleaner.set_params(cleaner__drop_patient_id=False).fit_transform(test_set_copy)
-    
+    if 'telo' in target:
+        test_set_cleaned = test_set_cleaner.set_params(cleaner__drop_patient_id=False).fit_transform(test_set_copy)
+    else:
+        test_set_cleaned = test_set_cleaner.fit_transform(test_set_copy)
+        
     features = [col for col in test_set if col != target]
-
     y_predict_list = []
     y_true_list = []
 
@@ -771,8 +786,8 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
         test_patient_data = test_set_cleaned[test_set_cleaned['patient id'] == patient].copy()
         test_patient_data.drop(['patient id', target], axis=1, inplace=True)
         predict_4C = model.predict(test_patient_data)
-        
-        print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
+        if verbose:
+            print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
         y_predict_list.append(np.mean(predict_4C))
         y_true_list.append(actual_4C)
         
@@ -847,9 +862,9 @@ class clean_data(BaseEstimator, TransformerMixin):
         for col in cols:
             if ('timepoint_3 B' in cols) and ('_3 B' in col or 'irrad' in col):
                 X.rename(columns={col:col.replace(' ', '')}, inplace=True)
-            elif ('timepoint_3 B' not in cols) and ('irrad' in col):
-                X.rename(columns={col:f'timepoint_{i}'}, inplace=True)
-                i+=1
+#             elif ('timepoint_3 B' not in cols) and ('irrad' in col):
+#                 X.rename(columns={col:f'timepoint_{i}'}, inplace=True)
+#                 i+=1
                 
         # enforcing col types
         cols = list(X.columns)
@@ -1071,12 +1086,12 @@ class make_target_merge(BaseEstimator, TransformerMixin):
         if self.target == 'aberration index':
             X.drop([self.target], axis=1, inplace=True)
         fourC_means, target_4C = self.extract_timepoint_rename(X_means, timept='4 C')
-        irrad4Gy_means, target_irr4Gy = self.extract_timepoint_rename(X_means, timept='2 irrad @ 4 Gy')
+#         irrad4Gy_means, target_irr4Gy = self.extract_timepoint_rename(X_means, timept='2 irrad @ 4 Gy')
         
         complete = X.merge(fourC_means[['patient id', target_4C]], on='patient id')
-        complete = complete.merge(irrad4Gy_means[['patient id', target_irr4Gy]], on='patient id')
+#         complete = complete.merge(irrad4Gy_means[['patient id', target_irr4Gy]], on='patient id')
         complete = complete[complete['timepoint'] != '4 C'].copy()        
-        complete.drop([target_irr4Gy], axis=1, inplace=True)
+#         complete.drop([target_irr4Gy], axis=1, inplace=True)
         return complete
         
     
@@ -1107,6 +1122,40 @@ def xgboost_hyper_param(learning_rate, n_estimators, max_depth,
 
     encode_dict = {'1 non irrad' : 1, '2 irrad @ 4 Gy': 2, '3 B': 3, '4 C': 4}
     return encode_dict[row]
+
+
+def chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=None, cleaned_test_set=None, 
+                                     model=None, target='4 C aberration index',
+                                     clean_process_pipe=None, verbose=True):
+
+    chr_data = cleaned_unsplit_chr_data.copy()
+    chr_data = clean_process_pipe.fit_transform(chr_data)
+    chr_test = cleaned_test_set.copy()
+#     test_set_cleaned = clean_process_pipe.fit_transform(test_set_copy)
+        
+    features = [col for col in chr_test if col != target]
+    y_predict_list = []
+    y_true_list = []
+
+    for patient in list(chr_data['patient id'].unique()):
+        # calculate actual mean telomere length per patient w/ all individual telos
+        patient_data = chr_data[chr_data['patient id'] == patient]
+#         display(patient_)
+        actual_4C = patient_data[target].mean()
+        
+        # calculate predicted mean telomere length per patient using only test data
+        test_patient_data = chr_test[chr_test['patient id'] == patient].copy()
+        test_patient_data.drop(['patient id', target], axis=1, inplace=True)
+        predict_4C = model.predict(test_patient_data)
+        if verbose:
+            print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
+        y_predict_list.append(np.mean(predict_4C))
+        y_true_list.append(actual_4C)
+        
+    print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
+    print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
+    
+    return y_predict_list, y_true_list
 
 
 ################################################################################
@@ -1214,17 +1263,82 @@ def graph_clusters_per_patient(df, target=None, cluster_name=None,
         plt.setp(ax.get_xticklabels(), horizontalalignment='right', rotation=45)
               
               
-def eval_make_test_comparisons(iter_time1=None, iter_time2=None, timept_pairs=None, row=None, test=None,
-                               df_list=None, i=None, test_name=None, df=None):
-    pair1, pair2 = f"{iter_time2}:{iter_time1}", f"{iter_time1}:{iter_time2}"
-    if iter_time1 != iter_time2 and pair1 not in timept_pairs and pair2 not in timept_pairs:
-        stat, pvalue = test(df, df_list[i])
-#         pvalue = pvalue.round(6)
-        print(f'{test_name} | {iter_time1} vs {iter_time2} {pvalue}')
-        timept_pairs.append(pair1)
-        timept_pairs.append(pair2)
-        row.append([test_name, iter_time1, iter_time2, pvalue])
+def eval_make_test_comparisons(df=None, timepoints=None, test=None, test_name=None, 
+                               target='individual telomeres'):
+    if timepoints == None:
+        timepoints = list(df['timepoint'].unique())
+    timept_pairs = []
+    row = []
+
+    g_1 = df[df['timepoint'] == '1 non irrad'][target]
+    g_2 = df[df['timepoint'] == '2 irrad @ 4 Gy'][target]
+    g_3 = df[df['timepoint'] == '3 B'][target]
+    g_4 = df[df['timepoint'] == '4 C'][target]
+    df_list = [g_1, g_2, g_3, g_4]
+              
+    for iter1, df in zip(timepoints, df_list):
+        for iter2, i in zip(timepoints, range(len(df_list))):
+            pair1, pair2 = f"{iter1}:{iter2}", f"{iter2}:{iter1}"
+            if iter2 != iter1 and pair1 not in timept_pairs and pair2 not in timept_pairs:
+                stat, pvalue = test(df, df_list[i])
+                print(f'{test_name} | {iter1} vs {iter2} {pvalue}')
+                timept_pairs.append(pair1)
+                timept_pairs.append(pair2)
+                row.append([test_name, iter1, iter2, pvalue])
     return timept_pairs, row
+              
+              
+################################################################
+################                                ################
+################             MISC               ################
+################                                ################            
+################################################################
+
+              
+def telos_scipy_anova_post_hoc_tests(df=None, time_col='timepoint', target='individual telomeres',
+                                     sig_test=stats.f_oneway, post_hoc=None):
+
+    g_1 = df[df['timepoint'] == '1 non irrad'][target]
+    g_2 = df[df['timepoint'] == '2 irrad @ 4 Gy'][target]
+    g_3 = df[df['timepoint'] == '3 B'][target]
+    g_4 = df[df['timepoint'] == '4 C'][target]
+    statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
+    print(f'ONE WAY ANOVA for telomere length: {p_value}')
+              
+    # if anova detects sig diff, perform post-hoc tests
+    if p_value <= 0.05:
+        mc = MultiComparison(df[target], df['timepoint'])
+        mc_results = mc.tukeyhsd()
+        print(mc_results)
+              
+              
+def chr_scipy_anova_post_hoc_tests(df=None, flight_status_col='timepoint',
+                                   sig_test=stats.f_oneway, post_hoc=sp.posthoc_ttest):
+    """
+    df should be melted by aberration type
+    """
+    # make list of aberrations
+    aberrations = list(df['aberration type'].unique())
+    
+    # loop through aberrations & perform anovas between pre/mid/post
+    for aberr in aberrations:
+        g_1 = df[(df[flight_status_col] == '1 non irrad') & (df['aberration type'] == aberr)]['count per cell']
+        g_2 = df[(df[flight_status_col] == '2 irrad @ 4 Gy') & (df['aberration type'] == aberr)]['count per cell']
+        g_3 = df[(df[flight_status_col] == '3 B') & (df['aberration type'] == aberr)]['count per cell']
+        g_4 = df[(df[flight_status_col] == '4 C') & (df['aberration type'] == aberr)]['count per cell']
+        statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
+        print(aberr, p_value)
+        
+        # if anova detects sig diff, perform post-hoc tests
+        if p_value <= 0.05:
+            if post_hoc == 'tukeyHSD':
+                mc = MultiComparison(df[df['aberration type'] == aberr]['count per cell'], 
+                                     df[df['aberration type'] == aberr]['timepoint'])
+                print(mc.tukeyhsd())
+            else:
+                display(post_hoc(df[df['aberration type'] == aberr], val_col='count per cell', 
+                        group_col='timepoint', equal_var=False))
+        print('\n')
               
 
 def z_norm_individual_telos(exploded_telos_df=None):
@@ -1238,3 +1352,67 @@ def z_norm_individual_telos(exploded_telos_df=None):
         timept_df.reset_index(drop=True, inplace=True)
         z_norm = pd.concat([z_norm, timept_df], axis=0)
     return z_norm
+              
+              
+def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, stats_df=None,
+                                                        verbose=True):
+    graphing_dict = {}
+    for features, target1, target2 in zip(features_list, target1_list, target2_list):
+        # loading chr aberr data
+        all_chr_aberr_df = pd.read_csv('../compiled patient data csv files/all_chr_aberr_df.csv')
+        # initializing general cleaner pipeline for data
+        general_cleaner = Pipeline([('cleaner', general_chr_aberr_cleaner())])
+        # cleaning data
+        cleaned_chr_df = general_cleaner.fit_transform(all_chr_aberr_df)
+        #splitting cleaned data into train/test
+        chr_train, chr_test = train_test_split(cleaned_chr_df, test_size=0.2, shuffle=True, 
+                                           stratify=cleaned_chr_df[['patient id', 'timepoint']])
+        # initializing pipeline to generate features + target from data for machine learning
+        make_new_features_target = Pipeline([('make features', make_chr_features(combine_inversions=False, bool_features=False, 
+                                                                                     features=features)),
+                                             ('make target merge', make_target_merge(target=target1, features=features))])
+        # making new train/test dataframes w/ features & target
+        cleaned_chr_train = chr_train.copy()
+        cleaned_chr_test = chr_test.copy()
+        cleaned_chr_train = make_new_features_target.fit_transform(cleaned_chr_train)
+        cleaned_chr_test = make_new_features_target.fit_transform(cleaned_chr_test)
+
+        # creating XGBoost regressor model 
+        chr_model = XGBRegressor(n_estimators=200, max_depth=15, learning_rate=0.1, objective='reg:squarederror', random_state=0,)
+
+        # performing cross-fold validation of XGBoost regressor on training set, returns model fitted on training data
+        print(f'--------------------------------------------------------------------')
+        print(f'PERFORMING CROSSFOLD VALIDATION of XGBoost model') 
+        print(f'features: {features} ___ target: {target2}')
+        print(f'--------------------------------------------------------------------')
+        chr_fit_xgb_model, row = cv_score_fit_mae_test(train_set=cleaned_chr_train, test_set=cleaned_chr_test,
+                                                           model=chr_model, cv=5, target=target2)
+        stats_df += row
+
+        # predicting target from test data w/ trained model & comparing predicted vs. actual values
+        print(f'--------------------------------------------------------------------')
+        print(f'PREDICTIONS of trained XGBoost model vs. actual values') 
+        print(f'features: {features} ___ target: {target2}')
+        print(f'--------------------------------------------------------------------')
+        chr_y_predict, y_true, = chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=cleaned_chr_df,
+                                                                            cleaned_test_set=cleaned_chr_test, 
+                                                                            model=chr_fit_xgb_model, target=target2,
+                                                                            clean_process_pipe=make_new_features_target,
+                                                                            verbose=verbose)
+        graphing_dict[target1] = [y_true, chr_y_predict]
+        print('\n')
+        
+    return stats_df, graphing_dict
+              
+              
+def make_graphing_df_stats_df(graphing_dict=None, stats_df=None):
+    graphing_df = pd.DataFrame()
+    for key in graphing_dict.keys():
+        data = pd.DataFrame({'aberration type':key, 
+                             'actual values':graphing_dict[key][0], 
+                             'predicted values':graphing_dict[key][1]})
+        graphing_df = pd.concat([graphing_df, data], axis=0)
+              
+    stats_df = pd.DataFrame(data=stats_df, columns=['Model', 'Features', 'Target', 'Average MAE of CV folds', 'Std dev of MAE of CV folds', 
+                                                    'MAE predicted vs. true', 'R2 predicted values vs. true'])
+    return graphing_df, stats_df
