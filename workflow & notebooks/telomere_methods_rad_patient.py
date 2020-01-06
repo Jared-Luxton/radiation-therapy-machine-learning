@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 from matplotlib import colors
 from matplotlib.ticker import PercentFormatter
+from matplotlib import lines
+import imgkit
 import seaborn as sns
 
 from statistics import mean 
@@ -514,7 +516,6 @@ def make_timepoint_col(row):
         return row
     else:
         pass
-
         
         
 def make_patient_ID(row):
@@ -530,10 +531,6 @@ def change_sample_ID(row):
         return row
     else:
         return row
-    
-
-
-
 
 
 #############################################################################
@@ -543,17 +540,12 @@ def change_sample_ID(row):
 #############################################################################
 
 def make_dataframe_chr_aberr_data(patharg):
-
     all_chr_aberr_df = pd.DataFrame()
-
     for file in os.scandir(patharg):
             if file.name.endswith('.xlsx') and file.name.startswith('~$') == False:
                 print(file)
-
                 try:
                     df = pd.read_excel(file, usecols=list(range(29)), index_col=0, header=0)
-#                     print(df.columns)
-
                 except:
                     print('File not found..')
                     return -1
@@ -562,32 +554,23 @@ def make_dataframe_chr_aberr_data(patharg):
                 two_irrad_4_Gy = df.iloc[150:240]
                 three_B = df.iloc[300:390]
                 four_C = df.iloc[450:540]
-
-                all_chr_aberr_df = pd.concat([one_non_irrad, two_irrad_4_Gy, three_B, four_C, 
-                                              all_chr_aberr_df])
-            
-            
-            
+                all_chr_aberr_df = pd.concat([one_non_irrad, two_irrad_4_Gy, three_B, four_C, all_chr_aberr_df])   
+                
     return all_chr_aberr_df
-
 
 
 def adjust_inversions_clonality(row):
     """
     df = df.apply(adjust_inversions_clonality, axis=1)
     """
-    
     if row['sample notes'] == 'NaN' or row['sample notes'] == 'nan':
         pass
-    
     if 'inv' in row['sample notes']:
-        
         sample_notes = row['sample notes']
         clonal_inv = re.findall('[0-9] inv', sample_notes)
         
         if len(clonal_inv) > 0:
             row['# inversions'] = row['# inversions'] - len(clonal_inv)
-        
         if 'term' in row['sample notes']:
             clonal_term_inv = re.findall('term inv', sample_notes)
     
@@ -595,7 +578,6 @@ def adjust_inversions_clonality(row):
                 row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
                 
     if 'trans' in row['sample notes']:
-        
         sample_notes = row['sample notes']
         clonal_trans = re.findall('[0-9] inv', sample_notes)
         
@@ -1178,9 +1160,9 @@ def myMetric(x, y):
 def plot_dendogram(Z, target=None, indexer=None):
     with plt.style.context('fivethirtyeight' ): 
         plt.figure(figsize=(10, 2.5))
-        plt.title(f'Dendrogram of {target} clustering', fontsize=25, fontweight='bold')
-        plt.xlabel('patient IDs', fontsize=25, fontweight='bold')
-        plt.ylabel('distance', fontsize=25, fontweight='bold')
+        plt.title(f'Dendrogram of clusters by {target}', fontsize=22, fontweight='bold')
+        plt.xlabel('patient IDs', fontsize=22, fontweight='bold')
+        plt.ylabel('distance', fontsize=22, fontweight='bold')
         hac.dendrogram(Z, labels=indexer, leaf_rotation=90.,    # rotates the x axis labels
                         leaf_font_size=15., ) # font size for the x axis labels
         plt.show()
@@ -1354,7 +1336,7 @@ def z_norm_individual_telos(exploded_telos_df=None):
     return z_norm
               
               
-def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, stats_df=None,
+def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, stats_list=None,
                                                         verbose=True):
     graphing_dict = {}
     for features, target1, target2 in zip(features_list, target1_list, target2_list):
@@ -1387,32 +1369,82 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
         print(f'--------------------------------------------------------------------')
         chr_fit_xgb_model, row = cv_score_fit_mae_test(train_set=cleaned_chr_train, test_set=cleaned_chr_test,
                                                            model=chr_model, cv=5, target=target2)
-        stats_df += row
+        stats_list += row
 
         # predicting target from test data w/ trained model & comparing predicted vs. actual values
         print(f'--------------------------------------------------------------------')
         print(f'PREDICTIONS of trained XGBoost model vs. actual values') 
         print(f'features: {features} ___ target: {target2}')
         print(f'--------------------------------------------------------------------')
-        chr_y_predict, y_true, = chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=cleaned_chr_df,
-                                                                            cleaned_test_set=cleaned_chr_test, 
-                                                                            model=chr_fit_xgb_model, target=target2,
-                                                                            clean_process_pipe=make_new_features_target,
-                                                                            verbose=verbose)
+        chr_y_predict, y_true = chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=cleaned_chr_df,
+                                                                           cleaned_test_set=cleaned_chr_test, 
+                                                                           model=chr_fit_xgb_model, target=target2,
+                                                                           clean_process_pipe=make_new_features_target,
+                                                                           verbose=verbose)
         graphing_dict[target1] = [y_true, chr_y_predict]
         print('\n')
         
-    return stats_df, graphing_dict
+    return stats_list, graphing_dict
               
               
-def make_graphing_df_stats_df(graphing_dict=None, stats_df=None):
+def make_stats_df(stats_list=None):    
+    stats_df = pd.DataFrame(data=stats_list, columns=['Model', 'Features', 'Target', 
+                                                      'Average MAE of CV folds', 'Std dev of MAE of CV folds', 
+                                                      'MAE predicted vs. test values', 'R2 predicted vs. test values'])
+    return stats_df
+              
+def make_graphing_df(graphing_dict=None):
     graphing_df = pd.DataFrame()
     for key in graphing_dict.keys():
         data = pd.DataFrame({'aberration type':key, 
                              'actual values':graphing_dict[key][0], 
                              'predicted values':graphing_dict[key][1]})
         graphing_df = pd.concat([graphing_df, data], axis=0)
+    return graphing_df
               
-    stats_df = pd.DataFrame(data=stats_df, columns=['Model', 'Features', 'Target', 'Average MAE of CV folds', 'Std dev of MAE of CV folds', 
-                                                    'MAE predicted vs. true', 'R2 predicted values vs. true'])
-    return graphing_df, stats_df
+def plot_individ_telos_ML_objective(df=None, timept_col='timepoint', 
+                                    timept_1='1 non irrad', timept_2='2 irrad @ 4 Gy',
+                                    features='individual telomeres',
+                                    target='4 C telo means'):
+              
+    # create subplot object
+    fig, ax = plt.subplots(3, 5, figsize=(24,15), sharex='col', sharey='row')
+
+    # create flattened axes, loop through axes and populate w/ histograms & data
+    axes = ax.ravel()
+    for i, id_num in zip(axes, df['patient id'].unique()):
+        df2 = df[df['patient id'] == id_num].copy()
+        nonirrad = df2[df2[timept_col] == timept_1][features]
+        irrad4Gy = df2[df2[timept_col] == timept_2][features]
+
+        # plotting 1 non irrad & 2 irrad @ 4 Gy distributions + ML target
+        sns.distplot(nonirrad, bins=25, hist=True, ax=i, label=timept_1, norm_hist=False, kde=False)
+        sns.distplot(irrad4Gy, bins=25, hist=True, ax=i, label=timept_2, norm_hist=False, kde=False)
+        i.axvline(x=df2[target].unique(), c='black', linewidth=3, alpha=0.5, linestyle='--')
+        
+        # labeling subplots
+        i.tick_params(labelsize=14)
+        i.set_xlabel('')
+        i.set_title(f'patient #{id_num}', fontsize=18)
+
+    # create legend
+    handles, labels = i.get_legend_handles_labels()
+    # create line object to represent 4 C target drawn on plots & append to legend objects
+    vertical_line = lines.Line2D([], [], color='black', linestyle='--')
+    handles.append(vertical_line)
+    labels.append(f'{target} per patient')
+    plt.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., fontsize=22)
+
+    # label axes
+    fig.text(0.5, -.005, 'Bins of Individual Telomeres (RFI)', ha='center', va='center', fontsize=24)
+    fig.text(-.005, 0.5, 'Counts of Individual Telomeres', ha='center', va='center', rotation='vertical', fontsize=24)
+    plt.tight_layout()
+    
+    # save
+    plt.savefig(f'../graphs/paper figures/supp figs/visualize {target} objective individual telos ML model.png', dpi=400,
+                bbox_inches = "tight")
+              
+              
+def df_to_png(df=None, path=None):
+    html_df = df.to_html(justify='center')
+    imgkit.from_string(html_df, path, options = {'format': 'png'})
