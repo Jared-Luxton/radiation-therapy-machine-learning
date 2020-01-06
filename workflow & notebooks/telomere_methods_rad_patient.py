@@ -1168,25 +1168,26 @@ def plot_dendogram(Z, target=None, indexer=None):
         plt.show()
 
         
-def plot_results(timeSeries, D, cut_off_level, y_size, x_size):
+def plot_results(timeSeries, D, cut_off_level, y_size, x_size, verbose):
     result = pd.Series(hac.fcluster(D, cut_off_level, criterion='maxclust'))
-    clusters = result.unique() 
-    fig = plt.subplots(figsize=(x_size, y_size))   
-    mimg = math.ceil(cut_off_level/2.0)
-    gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])   
-    for ipic, c in enumerate(clusters):
-        cluster_index = result[result==c].index
-        print(ipic, "Cluster number %d has %d elements" % (c, len(cluster_index)))
-        ax1 = plt.subplot(gs[ipic])
-        ax1.plot(timeSeries.T.iloc[:,cluster_index])
-        ax1.set_title((f'Cluster number {c}'), fontsize=15, fontweight='bold')      
-    plt.show()
+    if verbose:
+        clusters = result.unique() 
+        fig = plt.subplots(figsize=(x_size, y_size))   
+        mimg = math.ceil(cut_off_level/2.0)
+        gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])   
+        for ipic, c in enumerate(clusters):
+            cluster_index = result[result==c].index
+            print(ipic, "Cluster number %d has %d elements" % (c, len(cluster_index)))
+            ax1 = plt.subplot(gs[ipic])
+            ax1.plot(timeSeries.T.iloc[:,cluster_index])
+            ax1.set_title((f'Cluster number {c}'), fontsize=15, fontweight='bold')      
+        plt.show()
     return result
         
         
 def cluster_data_return_df(df, target='telo means', cut_off_n=4, 
                            metric=myMetric, method='single',
-                           y_size=6, x_size=10):
+                           y_size=6, x_size=10, verbose=True):
     
     df = df[df['patient id'] != 13].copy()
     # preparing data
@@ -1200,8 +1201,10 @@ def cluster_data_return_df(df, target='telo means', cut_off_n=4,
     
     # run the clustering    
     cluster_Z = hac.linkage(df, method=method, metric=metric)
-    plot_dendogram(cluster_Z, target=target, indexer=df.index)
-    indexed_clusters = plot_results(df, cluster_Z, cut_off_n, y_size=y_size, x_size=x_size)
+    if verbose:
+        plot_dendogram(cluster_Z, target=target, indexer=df.index)
+    # return df bearing cluster groups
+    indexed_clusters = plot_results(df, cluster_Z, cut_off_n, y_size=y_size, x_size=x_size, verbose=verbose)
     
     # concat clusters to original df and return
     ready_concat = df.reset_index()
@@ -1406,7 +1409,6 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
                                     timept_1='1 non irrad', timept_2='2 irrad @ 4 Gy',
                                     features='individual telomeres',
                                     target='4 C telo means'):
-              
     # create subplot object
     fig, ax = plt.subplots(3, 5, figsize=(24,15), sharex='col', sharey='row')
 
@@ -1426,6 +1428,7 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
         i.tick_params(labelsize=14)
         i.set_xlabel('')
         i.set_title(f'patient #{id_num}', fontsize=18)
+    axes[-1].axis('off')
 
     # create legend
     handles, labels = i.get_legend_handles_labels()
@@ -1441,10 +1444,53 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
     plt.tight_layout()
     
     # save
-    plt.savefig(f'../graphs/paper figures/supp figs/visualize {target} objective individual telos ML model.png', dpi=400,
-                bbox_inches = "tight")
+    plt.savefig(f'../graphs/paper figures/supp figs/visualize {target} objective individual telos ML model.png', 
+                dpi=400, bbox_inches = "tight")
               
               
 def df_to_png(df=None, path=None):
     html_df = df.to_html(justify='center')
     imgkit.from_string(html_df, path, options = {'format': 'png'})
+              
+                      
+def plot_multiple_types_clusters(y_list=None, hue_list=None,
+                                 df_list=None, ylim_dict=None):
+              
+    # defining plot size, layout based on num clusters to plot
+    fsize=(9.6,4.8)
+    row_dim = 1
+    col_dim = 2     
+    if len(y_list) > 2:
+        fsize=(13.6,8)
+        row_dim = 2
+        col_dim = 3              
+              
+    # define palette colorws & subplots
+    flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+    fig, ax = plt.subplots(row_dim, col_dim, figsize=fsize, sharey=False, sharex='col')
+    axes = ax.ravel()
+
+    for ax_n, y, hue, df in zip(axes, y_list, hue_list, df_list):
+        # creating plot
+        sns.lineplot(x='timepoint', y=y, hue=hue, data=df, legend='full', ax=ax_n,
+                    palette=sns.color_palette(flatui[:len(df[hue].unique())]),)
+        # manipulating axes, legend
+        plt.setp(ax_n.get_xticklabels(), rotation=30)
+        ax_n.legend(fontsize=12, loc='upper center')
+        ax_n.set_ylim(ylim_dict[y])
+        sns.set(font_scale=1.5)
+              
+#     axes[-1].axis('off')
+    axes[-1].grid(False)
+    # Hide axes ticks
+    axes[-1].set_xticks([])
+              
+    plt.tight_layout()
+        
+    # save
+    if 'telo means' in y_list and '# short telomeres' in y_list:
+        plt.savefig(f'../graphs/paper figures/main figs/viz clustering groups {y_list[0]} and {y_list[1]}.png', 
+                    dpi=400, bbox_inches = "tight")
+    else:
+        plt.savefig(f'../graphs/paper figures/main figs/viz all chr aberrations.png', 
+                    dpi=400, bbox_inches = "tight")
