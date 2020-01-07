@@ -1410,7 +1410,10 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
                                     features='individual telomeres',
                                     target='4 C telo means'):
     # create subplot object
-    fig, ax = plt.subplots(3, 5, figsize=(24,15), sharex='col', sharey='row')
+    fig, ax = plt.subplots(3, 5, figsize=(24,15), 
+#                            sharex='col', 
+                           sharey='row'
+                          )
 
     # create flattened axes, loop through axes and populate w/ histograms & data
     axes = ax.ravel()
@@ -1429,6 +1432,10 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
         i.set_xlabel('')
         i.set_title(f'patient #{id_num}', fontsize=18)
     axes[-1].axis('off')
+#     axes[-1].grid(False)
+#     axes[-1].set_facecolor('white')
+#     axes[-1].set_yticks([])
+#     axes[-1].set_title('')
 
     # create legend
     handles, labels = i.get_legend_handles_labels()
@@ -1460,16 +1467,19 @@ def plot_multiple_types_clusters(y_list=None, hue_list=None,
     fsize=(9.6,4.8)
     row_dim = 1
     col_dim = 2     
+    scale=1.5
     if len(y_list) > 2:
         fsize=(13.6,8)
         row_dim = 2
-        col_dim = 3              
+        col_dim = 3
+        scale=1.1
               
     # define palette colorws & subplots
     flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
-    fig, ax = plt.subplots(row_dim, col_dim, figsize=fsize, sharey=False, sharex='col')
+    fig, ax = plt.subplots(row_dim, col_dim, figsize=fsize, sharey=False, sharex=False)
     axes = ax.ravel()
-
+    sns.set(font_scale=scale)
+              
     for ax_n, y, hue, df in zip(axes, y_list, hue_list, df_list):
         # creating plot
         sns.lineplot(x='timepoint', y=y, hue=hue, data=df, legend='full', ax=ax_n,
@@ -1477,14 +1487,15 @@ def plot_multiple_types_clusters(y_list=None, hue_list=None,
         # manipulating axes, legend
         plt.setp(ax_n.get_xticklabels(), rotation=30)
         ax_n.legend(fontsize=12, loc='upper center')
-        ax_n.set_ylim(ylim_dict[y])
-        sns.set(font_scale=1.5)
-              
-#     axes[-1].axis('off')
-    axes[-1].grid(False)
-    # Hide axes ticks
-    axes[-1].set_xticks([])
-              
+        ax_n.set_ylim(ylim_dict[y])  
+          
+    # make final plot blank for chr aberr fig
+    if len(y_list) > 2:       
+        axes[-1].grid(False)
+        axes[-1].set_facecolor('white')
+        axes[-1].set_yticks([])
+        axes[-1].set_xticks([])
+        axes[-1].set_title('')
     plt.tight_layout()
         
     # save
@@ -1494,3 +1505,16 @@ def plot_multiple_types_clusters(y_list=None, hue_list=None,
     else:
         plt.savefig(f'../graphs/paper figures/main figs/viz all chr aberrations.png', 
                     dpi=400, bbox_inches = "tight")
+              
+              
+def swap_short_telos_group_number(row):
+    """
+    swaps all group 1 patients to group 2 & all group 2 patients to group 1
+    this is done purely for visualization reasons and has no impact whatsoever
+    on interpretation of results; just swapping #s for interpretability
+    """
+    if row == 1:
+        row = 2
+    elif row == 2:
+        row =1
+    return row
