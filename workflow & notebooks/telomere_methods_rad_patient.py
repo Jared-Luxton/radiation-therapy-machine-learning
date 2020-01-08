@@ -61,6 +61,7 @@ def generate_dictionary_from_TeloLength_data(patharg):
     etc.
     }
 
+    STATUS: IT WORKS PEGGY <3333333333
     i.e:
 
     all_patients_dict = {
@@ -384,6 +385,8 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
             
             graph_four_histograms(non_irrad, n_bins, non_irrad, irrad_4_Gy, three_B, four_C,
                                                 '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C', znorm)
+            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/all patients individual telos dist znorm {znorm}.png', 
+                        dpi=400)
     
     elif groupby == 'patient id':
         for item in iterable:
@@ -400,7 +403,8 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
                                   f'patient #{item} 3 B', 
                                   f'patient #{item} 4 C',
                                   znorm)
-    #         plt.savefig(f'../graphs/telomere length/individual telos patient#{item}.png', dpi=400)
+            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/individual telos patient#{item} znorm {znorm}.png', 
+                        dpi=400)
 
 def graph_four_histograms(quartile_ref, n_bins, 
                           df1, df2, df3, df4,
@@ -710,7 +714,7 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
 
 
 def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
-                          model=None, cv=5, scoring='neg_mean_absolute_error'):
+                          model=None, cv=5, scoring='neg_mean_absolute_error', verbose=True):
     
     row = []
     features = [col for col in train_set if col != target and col != 'patient id']
@@ -723,17 +727,19 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
     
     # cv
     scores = -1 * cross_val_score(model, X_train, y_train, cv=5, scoring=scoring)
-    print(f'MAE per CV fold: \n{scores} \n')
-    print(f'MEAN of MAE all folds: {scores.mean()}')
-    print(f'STD of MAE all folds: {scores.std()}\n')
+    if verbose:
+        print(f'MAE per CV fold: \n{scores} \n')
+        print(f'MEAN of MAE all folds: {scores.mean()}')
+        print(f'STD of MAE all folds: {scores.std()}\n')
 
     # fitting the model
     model.fit(X_train, y_train)
 
     # predict y_test from X_test - this is using the train/test split w/o shuff;ing
     predict_y_test = model.predict(X_test)
-    print(f"MAE of predict_y_test & y_test: {mean_absolute_error(y_test, predict_y_test)}")
-    print(f'R2 between predict_y_test & y_test: {r2_score(y_test, predict_y_test)}')
+    if verbose:
+        print(f"MAE of predict_y_test & y_test: {mean_absolute_error(y_test, predict_y_test)}")
+        print(f'R2 between predict_y_test & y_test: {r2_score(y_test, predict_y_test)}')
     
     row.append(['XGBoost', features, target, round(scores.mean(), 4),
                                              round(scores.std(), 4),
@@ -898,7 +904,6 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         if 'inv' in row['sample notes'] and 'term' not in row['sample notes']:
             sample_notes = row['sample notes']
             clonal_inv = re.findall('[0-9] inv', sample_notes)
-#             print(sample_notes, clonal_inv)
 
             if len(clonal_inv) > 0:
                 row['# inversions'] = row['# inversions'] - len(clonal_inv)
@@ -906,7 +911,6 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         if 'term' in row['sample notes']:
             sample_notes = row['sample notes']
             clonal_term_inv = re.findall('[0-9] term', sample_notes)
-#             print(sample_notes, clonal_term_inv)
                 
             if len(clonal_term_inv) > 0:
                 row['# terminal inversions'] = row['# terminal inversions'] - len(clonal_term_inv)
@@ -1122,20 +1126,21 @@ def chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=None, cl
     for patient in list(chr_data['patient id'].unique()):
         # calculate actual mean telomere length per patient w/ all individual telos
         patient_data = chr_data[chr_data['patient id'] == patient]
-#         display(patient_)
         actual_4C = patient_data[target].mean()
         
         # calculate predicted mean telomere length per patient using only test data
         test_patient_data = chr_test[chr_test['patient id'] == patient].copy()
         test_patient_data.drop(['patient id', target], axis=1, inplace=True)
         predict_4C = model.predict(test_patient_data)
+        
         if verbose:
             print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
         y_predict_list.append(np.mean(predict_4C))
         y_true_list.append(actual_4C)
-        
-    print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
-    print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
+    
+    if verbose:
+        print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
+        print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
     
     return y_predict_list, y_true_list
 
@@ -1339,8 +1344,8 @@ def z_norm_individual_telos(exploded_telos_df=None):
     return z_norm
               
               
-def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, stats_list=None,
-                                                        verbose=True):
+def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, 
+                                                        stats_list=None, verbose=True):
     graphing_dict = {}
     for features, target1, target2 in zip(features_list, target1_list, target2_list):
         # loading chr aberr data
@@ -1354,7 +1359,7 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
                                            stratify=cleaned_chr_df[['patient id', 'timepoint']])
         # initializing pipeline to generate features + target from data for machine learning
         make_new_features_target = Pipeline([('make features', make_chr_features(combine_inversions=False, bool_features=False, 
-                                                                                     features=features)),
+                                                                                 features=features)),
                                              ('make target merge', make_target_merge(target=target1, features=features))])
         # making new train/test dataframes w/ features & target
         cleaned_chr_train = chr_train.copy()
@@ -1366,26 +1371,29 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
         chr_model = XGBRegressor(n_estimators=200, max_depth=15, learning_rate=0.1, objective='reg:squarederror', random_state=0,)
 
         # performing cross-fold validation of XGBoost regressor on training set, returns model fitted on training data
-        print(f'--------------------------------------------------------------------')
-        print(f'PERFORMING CROSSFOLD VALIDATION of XGBoost model') 
-        print(f'features: {features} ___ target: {target2}')
-        print(f'--------------------------------------------------------------------')
+        if verbose:
+            print(f'--------------------------------------------------------------------')
+            print(f'PERFORMING CROSSFOLD VALIDATION of XGBoost model') 
+            print(f'features: {features} ___ target: {target2}')
+            print(f'--------------------------------------------------------------------')
         chr_fit_xgb_model, row = cv_score_fit_mae_test(train_set=cleaned_chr_train, test_set=cleaned_chr_test,
-                                                           model=chr_model, cv=5, target=target2)
+                                                       model=chr_model, cv=5, target=target2, verbose=verbose)
         stats_list += row
 
         # predicting target from test data w/ trained model & comparing predicted vs. actual values
-        print(f'--------------------------------------------------------------------')
-        print(f'PREDICTIONS of trained XGBoost model vs. actual values') 
-        print(f'features: {features} ___ target: {target2}')
-        print(f'--------------------------------------------------------------------')
+        if verbose:
+            print(f'--------------------------------------------------------------------')
+            print(f'PREDICTIONS of trained XGBoost model vs. actual values') 
+            print(f'features: {features} ___ target: {target2}')
+            print(f'--------------------------------------------------------------------')
         chr_y_predict, y_true = chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=cleaned_chr_df,
                                                                            cleaned_test_set=cleaned_chr_test, 
                                                                            model=chr_fit_xgb_model, target=target2,
                                                                            clean_process_pipe=make_new_features_target,
                                                                            verbose=verbose)
+        if verbose:
+            print('\n')
         graphing_dict[target1] = [y_true, chr_y_predict]
-        print('\n')
         
     return stats_list, graphing_dict
               
@@ -1429,6 +1437,7 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
         
         # labeling subplots
         i.tick_params(labelsize=14)
+        i.xaxis.set_major_locator(plt.MaxNLocator(4))
         i.set_xlabel('')
         i.set_title(f'patient #{id_num}', fontsize=18)
     axes[-1].axis('off')
