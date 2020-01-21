@@ -56,3 +56,9 @@ The notebooks which document and execute the data analysis for this project are 
 
 TO DO:  
 organize readme
+
+## Results
+&nbsp;   
+
+## Discussion
+&nbsp;   
