@@ -1,4 +1,4 @@
-# Utility of Telomere Length and Chromosome Rearrangements for Predicting Radiation Late Effects
+# Utility of telomere length and chromosome rearrangements for predicting radiation late effects
 
 ### 
 
