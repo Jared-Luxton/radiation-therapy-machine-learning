@@ -7,7 +7,7 @@ organize reaadme
 html copies of notebooks
 binder?
 
-| Entire repo (Jupyter Lab) |
+| Launch entire repo (Jupyter Lab) |
 | ---                       |
 | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab)|
 
