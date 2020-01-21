@@ -30,9 +30,10 @@ The notebooks which document and execute the data analysis for this project are 
 
 **03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb**
 * Extensive data-cleaning class pipelines to prepare data machine learning (ML) models
-* Training XGBoost models on pre-therapy data to predict post-therapy otucomes
 * GridSearch / Bayesian optimization (don't run if your laptop is older like mine)
+* Training XGBoost models on pre-therapy data to predict post-therapy otucomes
 * Extensive evaluation of model metrics
+* Hierarchical clustering of patients using longitudinal data into high/low risk sub-groups
 
 **04_radiation_therapy_patients_data_DATA_STORY.ipynb**
 * **IN PROGRESS**
