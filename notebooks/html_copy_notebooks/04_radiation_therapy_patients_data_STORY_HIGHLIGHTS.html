@@ -2,7 +2,7 @@
 <html>
 <head><meta charset="utf-8" />
 
-<title>01_radiation_therapy_patients_data_EXTRACTION_CLEANING</title>
+<title>04_radiation_therapy_patients_data_STORY_HIGHLIGHTS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -13089,7 +13089,7 @@ div#notebook {
 
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># tools for handling files</span>
@@ -13099,8 +13099,16 @@ div#notebook {
 <span class="c1"># pandas/numpy for handling data</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">pandas</span> <span class="k">import</span> <span class="n">ExcelWriter</span>
-<span class="kn">from</span> <span class="nn">pandas</span> <span class="k">import</span> <span class="n">ExcelFile</span>
+
+<span class="c1"># seaborn/matplotlib for graphing</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+
+<span class="c1"># statistics</span>
+<span class="kn">from</span> <span class="nn">statistics</span> <span class="k">import</span> <span class="n">mean</span> 
+<span class="kn">import</span> <span class="nn">statsmodels.api</span> <span class="k">as</span> <span class="nn">sm</span>
+<span class="kn">from</span> <span class="nn">statsmodels.formula.api</span> <span class="k">import</span> <span class="n">ols</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">stats</span>
 
 <span class="c1"># for reading individual telomere length data from files</span>
 <span class="kn">from</span> <span class="nn">ast</span> <span class="k">import</span> <span class="n">literal_eval</span>
@@ -13111,271 +13119,27 @@ div#notebook {
 <span class="c1"># my module containing functions for handling/visualizing/analyzing telomere length/chr rearrangement data</span>
 <span class="kn">import</span> <span class="nn">telomere_methods_rad_patient</span> <span class="k">as</span> <span class="nn">trp</span>
 
-<span class="c1"># incase reloading modules is required</span>
-<span class="kn">import</span> <span class="nn">importlib</span>
-<span class="o">%</span><span class="k">load_ext</span> autoreload
-<span class="o">%</span><span class="k">autoreload</span> 
-</pre></div>
+<span class="c1"># machine learning </span>
+<span class="kn">from</span> <span class="nn">sklearn.linear_model</span> <span class="k">import</span> <span class="n">LinearRegression</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">KFold</span>
+<span class="kn">from</span> <span class="nn">sklearn.tree</span> <span class="k">import</span> <span class="n">DecisionTreeRegressor</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="k">import</span> <span class="n">RandomForestRegressor</span>
+<span class="kn">from</span> <span class="nn">xgboost</span> <span class="k">import</span> <span class="n">XGBRegressor</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">mean_absolute_error</span><span class="p">,</span> <span class="n">auc</span><span class="p">,</span> <span class="n">accuracy_score</span><span class="p">,</span> <span class="n">r2_score</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">StratifiedShuffleSplit</span>
+<span class="kn">from</span> <span class="nn">sklearn.base</span> <span class="k">import</span> <span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span>
+<span class="kn">from</span> <span class="nn">sklearn.compose</span> <span class="k">import</span> <span class="n">ColumnTransformer</span>
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="k">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="k">import</span> <span class="n">OneHotEncoder</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">cross_val_score</span>
+<span class="kn">from</span> <span class="nn">bayes_opt</span> <span class="k">import</span> <span class="n">BayesianOptimization</span>
 
-    </div>
-</div>
-</div>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">FutureWarning</span><span class="p">)</span>
 
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/usr/local/lib/python3.7/site-packages/statsmodels/compat/pandas.py:49: FutureWarning: The Panel class is removed from pandas. Accessing it from the top-level namespace will also be removed in the next version
-  data_klasses = (pandas.Series, pandas.DataFrame, pandas.Panel)
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<hr>
-<p>&nbsp;</p>
-<p>...</p>
-<p>&nbsp;</p>
-<hr>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Loading-Telomere-Length-Data-from-TeloFISH">Loading Telomere Length Data from TeloFISH<a class="anchor-link" href="#Loading-Telomere-Length-Data-from-TeloFISH">&#182;</a></h1><hr>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Extracting-telomere-length-data-output-from-ImageJ-from-all-radiation-therapy-patients">Extracting telomere length data output from ImageJ from all radiation therapy patients<a class="anchor-link" href="#Extracting-telomere-length-data-output-from-ImageJ-from-all-radiation-therapy-patients">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_patients_dict</span> <span class="o">=</span> <span class="n">trp</span><span class="o">.</span><span class="n">generate_dictionary_from_TeloLength_data</span><span class="p">(</span><span class="s1">&#39;../data/raw patient teloFISH data/&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>SW9A non irrad.xlsx data extraction in progress..
-BJ1 for SW9_.xlsx data extraction in progress..
-SW11A non irrad.xlsx data extraction in progress..
-BJ1 for SW15_.xlsx data extraction in progress..
-SW6A non irrad.xlsx data extraction in progress..
-SW6A irrad @ 4 Gy.xlsx data extraction in progress..
-SW8B.xlsx data extraction in progress..
-SW14A irrad @ 4 Gy.xlsx data extraction in progress..
-SW8A irrad @ 4 Gy.xlsx data extraction in progress..
-SW5A irrad @ 4 Gy.xlsx data extraction in progress..
-SW8C.xlsx data extraction in progress..
-SW1A non irrad.xlsx data extraction in progress..
-BJ1 for SW11_.xlsx data extraction in progress..
-SW16A non irrad.xlsx data extraction in progress..
-BJ1 for SW13_.xlsx data extraction in progress..
-BJ-hTERT for SW9_.xlsx data extraction in progress..
-BJ1 for SW14_.xlsx data extraction in progress..
-SW9B.xlsx data extraction in progress..
-BJ1 for SW8_.xlsx data extraction in progress..
-SW_1_ok_3_C_.xlsx data extraction in progress..
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/usr/local/lib/python3.7/site-packages/scipy/stats/stats.py:2275: RuntimeWarning: Mean of empty slice.
-  mns = a.mean(axis=axis)
-/usr/local/lib/python3.7/site-packages/numpy/core/_methods.py:154: RuntimeWarning: invalid value encountered in true_divide
-  ret, rcount, out=ret, casting=&#39;unsafe&#39;, subok=False)
-/usr/local/lib/python3.7/site-packages/numpy/core/_methods.py:217: RuntimeWarning: Degrees of freedom &lt;= 0 for slice
-  keepdims=keepdims)
-/usr/local/lib/python3.7/site-packages/numpy/core/_methods.py:186: RuntimeWarning: invalid value encountered in true_divide
-  arrmean, rcount, out=arrmean, casting=&#39;unsafe&#39;, subok=False)
-/usr/local/lib/python3.7/site-packages/numpy/core/_methods.py:207: RuntimeWarning: invalid value encountered in true_divide
-  ret, rcount, out=ret, casting=&#39;unsafe&#39;, subok=False)
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>SW3A irrad @ 4 Gy.xlsx data extraction in progress..
-SW11A irrad @ 4 Gy.xlsx data extraction in progress..
-BJ1 for SW16_.xlsx data extraction in progress..
-BJ1 for SW12_.xlsx data extraction in progress..
-SW8A non irrad.xlsx data extraction in progress..
-BJ-hTERT for SW8_.xlsx data extraction in progress..
-SW10A non irrad.xlsx data extraction in progress..
-SW12A irrad @ 4 Gy.xlsx data extraction in progress..
-SW9C.xlsx data extraction in progress..
-BJ1 for SW10_.xlsx data extraction in progress..
-SW7A non irrad.xlsx data extraction in progress..
-SW1A irrad @ 4 Gy.xlsx data extraction in progress..
-SW13A irrad @ 4 Gy.xlsx data extraction in progress..
-SW1B.xlsx data extraction in progress..
-BJ-hTERT for SW6_.xlsx data extraction in progress..
-SW13B.xlsx data extraction in progress..
-BJ1 for SW2_.xlsx data extraction in progress..
-SW2A non irrad.xlsx data extraction in progress..
-SW5C.xlsx data extraction in progress..
-SW15C.xlsx data extraction in progress..
-SW7C.xlsx data extraction in progress..
-SW11B.xlsx data extraction in progress..
-SW3B.xlsx data extraction in progress..
-BJ-hTERT for SW15_.xlsx data extraction in progress..
-SW15A non irrad.xlsx data extraction in progress..
-SW12A non irrad.xlsx data extraction in progress..
-BJ-hTERT for SW11_.xlsx data extraction in progress..
-SW3C.xlsx data extraction in progress..
-SW11C.xlsx data extraction in progress..
-SW7B.xlsx data extraction in progress..
-SW15B.xlsx data extraction in progress..
-BJ1 for SW6_.xlsx data extraction in progress..
-BJ-hTERT for SW2_.xlsx data extraction in progress..
-SW5B.xlsx data extraction in progress..
-SW5A non irrad.xlsx data extraction in progress..
-SW1C.xlsx data extraction in progress..
-BJ-hTERT for SW13_.xlsx data extraction in progress..
-SW10A irrad @ 4 Gy.xlsx data extraction in progress..
-SW2A irrad @ 4 Gy.xlsx data extraction in progress..
-BJ1 for SW1_.xlsx data extraction in progress..
-SW10B.xlsx data extraction in progress..
-BJ-hTERT for SW5_.xlsx data extraction in progress..
-SW2B.xlsx data extraction in progress..
-SW13A non irrad.xlsx data extraction in progress..
-SW14C.xlsx data extraction in progress..
-SW6C.xlsx data extraction in progress..
-SW9A irrad @ 4 Gy.xlsx data extraction in progress..
-SW16A irrad @ 4 Gy.xlsx data extraction in progress..
-BJ-hTERT for SW14_.xlsx data extraction in progress..
-BJ-hTERT for SW16_.xlsx data extraction in progress..
-SW16C.xlsx data extraction in progress..
-BJ1 for SW3_.xlsx data extraction in progress..
-SW12B.xlsx data extraction in progress..
-BJ-hTERT for SW7_.xlsx data extraction in progress..
-SW12C.xlsx data extraction in progress..
-SW16B.xlsx data extraction in progress..
-BJ-hTERT for SW3_.xlsx data extraction in progress..
-BJ1 for SW7_.xlsx data extraction in progress..
-BJ-hTERT for SW12_.xlsx data extraction in progress..
-SW3A non irrad.xlsx data extraction in progress..
-SW15A irrad @ 4 Gy.xlsx data extraction in progress..
-SW7A irrad @ 4 Gy.xlsx data extraction in progress..
-BJ-hTERT for SW10_.xlsx data extraction in progress..
-SW6B.xlsx data extraction in progress..
-SW14B.xlsx data extraction in progress..
-BJ-hTERT for SW1_.xlsx data extraction in progress..
-SW14A non irrad.xlsx data extraction in progress..
-BJ1 for SW5_.xlsx data extraction in progress..
-SW2C.xlsx data extraction in progress..
-SW10C.xlsx data extraction in progress..
-completed file collection
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Making-dataframe-from-dict-w/-all-patients-telomere-length-data,-contains-telo-means-&amp;-individual-telos-as-list">Making dataframe from dict w/ all patients telomere length data, contains telo means &amp; individual telos as list<a class="anchor-link" href="#Making-dataframe-from-dict-w/-all-patients-telomere-length-data,-contains-telo-means-&amp;-individual-telos-as-list">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_patients_df</span> <span class="o">=</span> <span class="n">trp</span><span class="o">.</span><span class="n">generate_dataframe_from_dict</span><span class="p">(</span><span class="n">all_patients_dict</span><span class="p">)</span>
-
-<span class="c1"># don&#39;t need telo means per cell @ this time</span>
-<span class="n">all_patients_df</span> <span class="o">=</span> <span class="n">all_patients_df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;cell data&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">all_patients_df</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>(59, 7)
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Saving-all-patients-telomere-length-data-for-later-retrieval">Saving all patients telomere length data for later retrieval<a class="anchor-link" href="#Saving-all-patients-telomere-length-data-for-later-retrieval">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># changing telo data to list in prep for saving to csv</span>
-<span class="n">all_patients_df</span><span class="p">[</span><span class="s1">&#39;telo data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_patients_df</span><span class="p">[</span><span class="s1">&#39;telo data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-<span class="n">all_patients_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/compiled patient data csv files/all_patients_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># setting darkgrid style for seaborn figures</span>
+<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s2">&quot;darkgrid&quot;</span><span class="p">,</span><span class="n">rc</span><span class="o">=</span> <span class="p">{</span><span class="s1">&#39;patch.edgecolor&#39;</span><span class="p">:</span> <span class="s1">&#39;black&#39;</span><span class="p">})</span>
 </pre></div>
 
     </div>
@@ -13386,127 +13150,30 @@ completed file collection
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Generating-all-patients-telo-df-containing-telo-counts-per-quartile-melted-into-tidy-data-format">Generating all patients telo df containing telo counts per quartile melted into tidy data format<a class="anchor-link" href="#Generating-all-patients-telo-df-containing-telo-counts-per-quartile-melted-into-tidy-data-format">&#182;</a></h2>
+<h1 id="Abstract">Abstract<a class="anchor-link" href="#Abstract">&#182;</a></h1>
 </div>
 </div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">melted_all_patients_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span>
-    <span class="n">all_patients_df</span><span class="p">,</span>
-    <span class="n">id_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">all_patients_df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">col</span> <span class="o">!=</span> <span class="s1">&#39;Q1&#39;</span> <span class="ow">and</span> <span class="n">col</span> <span class="o">!=</span> <span class="s1">&#39;Q2-3&#39;</span> <span class="ow">and</span> <span class="n">col</span> <span class="o">!=</span> <span class="s1">&#39;Q4&#39;</span><span class="p">],</span>
-    <span class="n">var_name</span><span class="o">=</span><span class="s1">&#39;relative Q&#39;</span><span class="p">,</span>
-    <span class="n">value_name</span><span class="o">=</span><span class="s1">&#39;Q freq counts&#39;</span><span class="p">)</span>
-
-<span class="n">melted_all_patients_df</span><span class="p">[</span><span class="s1">&#39;Q freq counts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">melted_all_patients_df</span><span class="p">[</span><span class="s1">&#39;Q freq counts&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
-<span class="n">melted_all_patients_df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[5]:</div>
-
-
-
-<div class="output_html rendered_html output_subarea output_execute_result">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>patient id</th>
-      <th>timepoint</th>
-      <th>telo data</th>
-      <th>telo means</th>
-      <th>relative Q</th>
-      <th>Q freq counts</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1</td>
-      <td>1 non irrad</td>
-      <td>[70.74301669292741, 91.86033510872664, 59.1284...</td>
-      <td>84.796483</td>
-      <td>Q1</td>
-      <td>1195.0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>2 irrad @ 4 Gy</td>
-      <td>[91.86033510872664, 119.31165592077517, 99.251...</td>
-      <td>90.975826</td>
-      <td>Q1</td>
-      <td>724.0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>3 B</td>
-      <td>[191.10982054566642, 141.48603338585482, 114.0...</td>
-      <td>116.779989</td>
-      <td>Q1</td>
-      <td>231.0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>1</td>
-      <td>4 C</td>
-      <td>[86.58100550477684, 139.3729078012595, 99.2504...</td>
-      <td>99.346299</td>
-      <td>Q1</td>
-      <td>372.0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Saving-melted-all-patients-df-to-csv">Saving melted all patients df to csv<a class="anchor-link" href="#Saving-melted-all-patients-df-to-csv">&#182;</a></h2>
+<h1 id="Background">Background<a class="anchor-link" href="#Background">&#182;</a></h1>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Results">Results<a class="anchor-link" href="#Results">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">melted_all_patients_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/compiled patient data csv files/melted_all_patients_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1">## Telomere length analysis</span>
 </pre></div>
 
     </div>
@@ -13517,383 +13184,23 @@ completed file collection
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Pivoted-Dataframe-w/-timepoints-as-columns,-and-telomere-length-means-for-each-patient-timepoint-in-rows">Pivoted Dataframe w/ timepoints as columns, and telomere length means for each patient timepoint in rows<a class="anchor-link" href="#Pivoted-Dataframe-w/-timepoints-as-columns,-and-telomere-length-means-for-each-patient-timepoint-in-rows">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">pivot_patients_telo_means_df</span> <span class="o">=</span> <span class="n">all_patients_df</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s1">&#39;patient id&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;timepoint&#39;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s1">&#39;telo means&#39;</span><span class="p">)</span>
-<span class="n">pivot_patients_telo_means_df</span> <span class="o">=</span> <span class="n">pivot_patients_telo_means_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="mi">13</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Saving-pivoted-telo-means-df-to-file">Saving pivoted telo means df to file<a class="anchor-link" href="#Saving-pivoted-telo-means-df-to-file">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">pivot_patients_telo_means_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/compiled patient data csv files/pivot_patients_telo_means_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Exploding-individual-telomere-length-measurements-from-contained-list-into-dataframe-(i.e-row-per-individual-telomere)-while-retaining-related-column-info">Exploding individual telomere length measurements from contained list into dataframe (i.e row per individual telomere) while retaining related column info<a class="anchor-link" href="#Exploding-individual-telomere-length-measurements-from-contained-list-into-dataframe-(i.e-row-per-individual-telomere)-while-retaining-related-column-info">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># can imagine the lists containing the individual telos per patient exploding to the right; maintains the index relationship</span>
-<span class="n">explode_telos_raw</span> <span class="o">=</span> <span class="n">all_patients_df</span><span class="p">[</span><span class="s1">&#39;telo data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">explode_telos_raw</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-<span class="n">explode_telos_raw</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>(59, 4600)
-</pre>
-</div>
-</div>
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[9]:</div>
-
-
-
-<div class="output_html rendered_html output_subarea output_execute_result">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>9</th>
-      <th>...</th>
-      <th>4590</th>
-      <th>4591</th>
-      <th>4592</th>
-      <th>4593</th>
-      <th>4594</th>
-      <th>4595</th>
-      <th>4596</th>
-      <th>4597</th>
-      <th>4598</th>
-      <th>4599</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>70.743017</td>
-      <td>91.860335</td>
-      <td>59.128492</td>
-      <td>65.463687</td>
-      <td>51.737430</td>
-      <td>52.793296</td>
-      <td>59.128492</td>
-      <td>69.687151</td>
-      <td>70.743017</td>
-      <td>144.653631</td>
-      <td>...</td>
-      <td>70.743017</td>
-      <td>153.099028</td>
-      <td>161.547486</td>
-      <td>89.748603</td>
-      <td>166.826815</td>
-      <td>71.798883</td>
-      <td>181.607122</td>
-      <td>49.625202</td>
-      <td>71.798883</td>
-      <td>102.418994</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>91.860335</td>
-      <td>119.311656</td>
-      <td>99.251397</td>
-      <td>144.653631</td>
-      <td>108.754190</td>
-      <td>100.307262</td>
-      <td>106.641392</td>
-      <td>107.697247</td>
-      <td>162.601726</td>
-      <td>103.474860</td>
-      <td>...</td>
-      <td>84.468429</td>
-      <td>69.687151</td>
-      <td>101.363128</td>
-      <td>147.819751</td>
-      <td>168.938547</td>
-      <td>88.692737</td>
-      <td>88.691850</td>
-      <td>48.569832</td>
-      <td>54.905028</td>
-      <td>97.139665</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>191.109821</td>
-      <td>141.486033</td>
-      <td>114.033519</td>
-      <td>156.266594</td>
-      <td>126.703910</td>
-      <td>185.832402</td>
-      <td>115.089385</td>
-      <td>84.469274</td>
-      <td>150.988827</td>
-      <td>71.798165</td>
-      <td>...</td>
-      <td>73.910614</td>
-      <td>141.484619</td>
-      <td>158.379888</td>
-      <td>74.966480</td>
-      <td>86.581006</td>
-      <td>93.971127</td>
-      <td>111.921788</td>
-      <td>89.748603</td>
-      <td>105.586592</td>
-      <td>97.011747</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>86.581006</td>
-      <td>139.372908</td>
-      <td>99.250404</td>
-      <td>85.525140</td>
-      <td>101.363128</td>
-      <td>109.810056</td>
-      <td>87.636871</td>
-      <td>111.921788</td>
-      <td>134.094972</td>
-      <td>76.022346</td>
-      <td>...</td>
-      <td>96.083799</td>
-      <td>107.698324</td>
-      <td>93.972067</td>
-      <td>59.127900</td>
-      <td>99.251397</td>
-      <td>76.021586</td>
-      <td>76.022346</td>
-      <td>59.127900</td>
-      <td>129.871508</td>
-      <td>172.106145</td>
-    </tr>
-  </tbody>
-</table>
-<p>4 rows × 4600 columns</p>
-</div>
-</div>
-
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">exploded_telos_all_patients_df</span> <span class="o">=</span> <span class="p">(</span><span class="n">explode_telos_raw</span>
-                                  
-    <span class="c1"># we&#39;ll merge the exploded telos df w/ our original all patients df on the index!</span>
-    <span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">all_patients_df</span><span class="p">,</span> <span class="n">right_index</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">left_index</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;telo data&#39;</span><span class="p">,</span> <span class="s1">&#39;Q1&#39;</span><span class="p">,</span> <span class="s1">&#39;Q2-3&#39;</span><span class="p">,</span> <span class="s1">&#39;Q4&#39;</span><span class="p">],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">id_vars</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;patient id&#39;</span><span class="p">,</span> <span class="s1">&#39;timepoint&#39;</span><span class="p">,</span> <span class="s1">&#39;telo means&#39;</span><span class="p">],</span> <span class="n">value_name</span> <span class="o">=</span> <span class="s2">&quot;individual telomeres&quot;</span><span class="p">)</span> 
-    <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;variable&quot;</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
-
-<span class="n">exploded_telos_all_patients_df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[10]:</div>
-
-
-
-<div class="output_html rendered_html output_subarea output_execute_result">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>patient id</th>
-      <th>timepoint</th>
-      <th>telo means</th>
-      <th>individual telomeres</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1</td>
-      <td>1 non irrad</td>
-      <td>84.796483</td>
-      <td>70.743017</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>2 irrad @ 4 Gy</td>
-      <td>90.975826</td>
-      <td>91.860335</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>3 B</td>
-      <td>116.779989</td>
-      <td>191.109821</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>1</td>
-      <td>4 C</td>
-      <td>99.346299</td>
-      <td>86.581006</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Saving-exploded-telomere-df-for-later-retrieval">Saving exploded telomere df for later retrieval<a class="anchor-link" href="#Saving-exploded-telomere-df-for-later-retrieval">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">exploded_telos_all_patients_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/compiled patient data csv files/exploded_telos_all_patients_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Loading-Telomere-Length-Data-from-qPCR---Aidan-&amp;-Lynn">Loading Telomere Length Data from qPCR - Aidan &amp; Lynn<a class="anchor-link" href="#Loading-Telomere-Length-Data-from-qPCR---Aidan-&amp;-Lynn">&#182;</a></h1><hr>
-
+<h1 id="Discussion">Discussion<a class="anchor-link" href="#Discussion">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Extracting-average-telomere-length-data-by-qPCR-data-from-Aidan-&amp;-Lynn">Extracting average telomere length data by qPCR data from Aidan &amp; Lynn<a class="anchor-link" href="#Extracting-average-telomere-length-data-by-qPCR-data-from-Aidan-&amp;-Lynn">&#182;</a></h2>
+<h1 id="Conclusions">Conclusions<a class="anchor-link" href="#Conclusions">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_qPCR_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s1">&#39;../data/qPCR telo data/REVISED Tel +Alb (both plates) 2019-08-05 13 Quantification Cq Results.xlsx&#39;</span><span class="p">,</span>
-                            <span class="n">sheet_name</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                           <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-                            <span class="n">usecols</span><span class="o">=</span><span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">26</span><span class="p">,]</span>
-                           <span class="p">)</span>
-
-<span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">,</span> <span class="s1">&#39;telo means qPCR&#39;</span><span class="p">,</span> <span class="s1">&#39;SEM&#39;</span><span class="p">]</span>
-<span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;str&#39;</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span> 
 </pre></div>
 
     </div>
@@ -13903,197 +13210,10 @@ completed file collection
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="mi">24</span><span class="p">,</span> <span class="mi">47</span><span class="p">,</span> <span class="mi">48</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">trp</span><span class="o">.</span><span class="n">change_sample_ID</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
-<span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;timepoint&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">trp</span><span class="o">.</span><span class="n">make_timepoint_col</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
-<span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;patient id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;Sample&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">trp</span><span class="o">.</span><span class="n">make_patient_ID</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
-
-<span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;patient id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="p">[</span><span class="s1">&#39;patient id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;str&#39;</span><span class="p">)</span>
-<span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s1">&#39;Sample&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;patient id&#39;</span><span class="p">,</span> <span class="s1">&#39;timepoint&#39;</span><span class="p">,</span> <span class="s1">&#39;telo means qPCR&#39;</span><span class="p">,</span> <span class="s1">&#39;SEM&#39;</span><span class="p">]</span>
-<span class="n">all_qPCR_df</span> <span class="o">=</span> <span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">cols</span><span class="p">)</span>
-<span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[15]:</div>
-
-
-
-<div class="output_html rendered_html output_subarea output_execute_result">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>patient id</th>
-      <th>timepoint</th>
-      <th>telo means qPCR</th>
-      <th>SEM</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1</td>
-      <td>1 non irrad</td>
-      <td>2.182028</td>
-      <td>0.083233</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>3 B</td>
-      <td>1.964348</td>
-      <td>0.051942</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>4 C</td>
-      <td>1.749799</td>
-      <td>0.068195</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2</td>
-      <td>1 non irrad</td>
-      <td>1.669445</td>
-      <td>0.034776</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_qPCR_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/qPCR telo data/all_qPCR_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Loading-Chromosome-Aberration-Data-from-Subtelo-dGH">Loading Chromosome Aberration Data from Subtelo-dGH<a class="anchor-link" href="#Loading-Chromosome-Aberration-Data-from-Subtelo-dGH">&#182;</a></h1><hr>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_chr_aberr_df</span> <span class="o">=</span> <span class="n">trp</span><span class="o">.</span><span class="n">make_dataframe_chr_aberr_data</span><span class="p">(</span><span class="s1">&#39;../data/dGH scoresheets/&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>&lt;DirEntry &#39;SW14_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW3_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW8_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW13_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW9_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW5_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW12_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW15_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW2_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW10_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW7_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW1_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW16_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW11_timepoints_subtelodGH.xlsx&#39;&gt;
-&lt;DirEntry &#39;SW6_timepoints_subtelodGH.xlsx&#39;&gt;
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">all_chr_aberr_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../data/compiled patient data csv files/all_chr_aberr_df.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span> 
 </pre></div>
 
     </div>
