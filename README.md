@@ -23,18 +23,18 @@ The notebooks which document and execute the data analysis for this project are 
 **01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb**
 * Extraction and cleaning of telomere length and chromosome rearrangement data 
 
-**2_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb**
+**02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb**
 * Multiple types of highly customized data visualizations
 * Feature engineering short/long telomeres
 * ANOVAs, regressions, statistical modeling
 
-**3_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb**
+**03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb**
 * Extensive data-cleaning class pipelines to prepare data machine learning (ML) models
 * Training XGBoost models on pre-therapy data to predict post-therapy otucomes
 * GridSearch / Bayesian optimization (don't run if your laptop is older like mine)
 * Extensive evaluation of model metrics
 
-**4_radiation_therapy_patients_data_DATA_STORY.ipynb**
+**04_radiation_therapy_patients_data_DATA_STORY.ipynb**
 * **IN PROGRESS**
 * Cohesive data story in jupyter notebook format
 * Highlights and major implications from the analysis
