@@ -1,4 +1,4 @@
-# Utility of Telomere Length and Chromosome Rearrangements for Machine Learning Predictions of Radiation Late Effects in IMRT Patients
+# Utility of Telomere Length and Chromosome Rearrangements for Radiation Late Effects
 
 ### [Determining Radiation Sensitivity Status of Patients](https://nbviewer.jupyter.org/github/Jared-Luxton/Radiation-sensitivity-therapy-patients/blob/master/RADIATION-SENSITIVITY-telos-chromosomes.ipynb)
 
