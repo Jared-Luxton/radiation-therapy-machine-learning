@@ -40,23 +40,21 @@ The notebooks which document and execute the data analysis for this project are 
 * Cohesive data story in jupyter notebook format
 * Highlights and major implications from the analysis
 ---
-
+### To launch all notebooks (may be slow):
 | Launch entire repo (Jupyter Lab) |
 | ---                       |
 | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab)|
 
+### To launch individual notebooks:
 | Nbviewer | Jupyter Lab | HTML |
 | ---      |  ---        | ---  |
 | [01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb) | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb) | [HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/01_radiation_therapy_patients_data_EXTRACTION_CLEANING.html) |
 | [02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.html) |
 | [03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.html) |
 | [04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/04_radiation_therapy_patients_data_STORY_LEARNING.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.html) |
-
-
+&nbsp;   
 
 TO DO:  
-organize readme
-
 ## Results
 &nbsp;   
 
