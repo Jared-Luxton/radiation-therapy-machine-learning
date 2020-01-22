@@ -40,8 +40,8 @@ The notebooks which document and execute the data analysis for this project are 
 * Cohesive data story in jupyter notebook format
 * Highlights and major implications from the analysis
 ---
-### To launch all notebooks (may be slow):
-| Launch entire repo (Jupyter Lab) |
+### To launch all 4 notebooks (may be slow):
+| Jupyter Lab |
 | ---                       |
 | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab)|
 
