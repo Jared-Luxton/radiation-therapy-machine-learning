@@ -45,35 +45,53 @@ from statsmodels.stats.anova import AnovaRM
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
-    opens raw telomere length measurement excel files from imageJ analyses and
-    extracts the mean value of individual telomere length measurements to make histograms;
-    telos are stored as values to their sample timepoint keys, which themselves 
-    are values to patient id# key
+    USAGE:
+    all_patients_dict = generate_dictionary_from_TeloLength_data(path/to/telomere_data/directory)
 
-    i.e the data structure is:
+    The directory should contain Excel files containing individual telomere length data in
+    a predefined format. This function is written specifically for the Excel file templates
+    that our lab uses (provided in this repository) but could be altered for any format.
+   
+    The function loops through the data files and extracts the column containing individual telomere length
+    measurements, then removes missing values & DAPI-intensity values, and outliers (3 std devs from mean of column).
+    The sample's filename (which should contain sample ID & timepoint information) is stored in a dictionary as a KEY,
+    with it's corresponding VALUE being the telomere data.
 
-    dict = {
-    patient_IDnumber: {SW#A non irrad: [telos data],
-                       SW#A irrad @ 4 Gy: [telos data],
-                       SW#B: [telos data],
-                       SW#C: [telos data],
-                       },
+    Args:
+        patharg (PATH): 
+        Path to directory containing telomere length data
+
+    Returns:
+        telomere_dict:
+        Nested dictionaries containing telomere data for all patients. 
+        
+        Outer dict: 
+        KEY:VALUE pairs are PATIENT ID (int): ALL PATIENT ID DATA (inner dict).
+        
+        ALL PATIENT ID DATA (inner dict): 
+        KEY:VALUE pairs are TIMEPOINTS (string): [telomere data] (list).
+
+    i.e the overall data structure for the returned telomere_dict is:
+
+    dict = {patient_IDnumber1: {SW#A non irrad: [telos data],
+                                SW#A irrad @ 4 Gy: [telos data],
+                                SW#B: [telos data],
+                                SW#C: [telos data]},
+                                
+            patient_IDnumber2: {SW#A non irrad: [telos data],
+                                SW#A irrad @ 4 Gy: [telos data],
+                                SW#B: [telos data],
+                                SW#C: [telos data]},
     etc.
     }
-
-    STATUS: IT WORKS PEGGY <3333333333
-    i.e:
-
-    all_patients_dict = {
-    '1' = {'SW1A non irrad': ['telomere data'],
-           'SW1A irrad @ 4 Gy': ['telomere data'],
-           'SW1B': ['telomere data'],
-           'SW1C': ['telomere data'],
-          },
-    etc. for patients 1 - 16 (less #4 missing)
-    }
-    USAGE:
-    pass the directory where the telomere length excel files (.xlsx) are located
+    
+    where SW denotes a patient sample, # refers to patient ID, and A/B/C refer to:
+    A non irrad & A irrad @ 4 Gy: samples acquired 3 months pre-therapy, split in half & one is non-irradiated
+    and the other irradiated @ 4 Gy, respectively.
+    
+    B: samples acquired immediately post-therapy regimen
+    
+    C: samples acquired 3 months post-therapy
     """
     all_patients_dict = {}
     for file in os.scandir(patharg):
@@ -655,7 +673,6 @@ def combine_data(exploded_telos=None, all_patients_df=None,
         telo_data = (exploded_telos[exploded_telos['timepoint'] != '4 C']
                  .merge(four_C[[target, 'patient id']], on=['patient id']))
 
-    
 #     cols to retain
 #     cols_to_drop = [col for col in telo_data.columns if col not in cols_keep]
 #     telo_data.drop(cols_to_drop, axis=1, inplace=True)
@@ -688,7 +705,6 @@ class clean_data(BaseEstimator, TransformerMixin):
                 X[col] = X[col].astype('int64')
             else:
                 X[col] = X[col].astype('float64')
-
         return X
 
 
@@ -701,8 +717,7 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
     tmp = data.copy()
     grid = grid.fit(tmp, target)
     pd.options.mode.chained_assignment = 'warn'
-    result = pd.DataFrame(grid.cv_results_).sort_values(by='mean_test_score', 
-                                                        ascending=False).reset_index()
+    result = pd.DataFrame(grid.cv_results_).sort_values(by='mean_test_score', ascending=False).reset_index()
     
     del result['params']
     times = [col for col in result.columns if col.endswith('_time')]
@@ -717,7 +732,7 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
                           model=None, cv=5, scoring='neg_mean_absolute_error', verbose=True):
     
     row = []
-    features = [col for col in train_set if col != target and col != 'patient id']
+    features = [col for col in train_set.columns if col != target and col != 'patient id']
     
     X_train = train_set[features].copy()
     X_test = test_set[features].copy()
@@ -1271,10 +1286,10 @@ def eval_make_test_comparisons(df=None, timepoints=None, test=None, test_name=No
             pair1, pair2 = f"{iter1}:{iter2}", f"{iter2}:{iter1}"
             if iter2 != iter1 and pair1 not in timept_pairs and pair2 not in timept_pairs:
                 stat, pvalue = test(df, df_list[i])
-                print(f'{test_name} | {iter1} vs {iter2} {pvalue}')
+                print(f'{test_name} | {iter1} vs {iter2} P-VALUE: {pvalue} KS-STAT {stat}')
                 timept_pairs.append(pair1)
                 timept_pairs.append(pair2)
-                row.append([test_name, iter1, iter2, pvalue])
+                row.append([test_name, iter1, iter2, pvalue, stat])
     return timept_pairs, row
               
               
@@ -1456,7 +1471,7 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
 
     # label axes
     fig.text(0.5, -.005, 'Bins of Individual Telomeres (RFI)', ha='center', va='center', fontsize=24)
-    fig.text(-.005, 0.5, 'Counts of Individual Telomeres', ha='center', va='center', rotation='vertical', fontsize=24)
+    fig.text(-.005, 0.5, 'Individual Telomere Counts', ha='center', va='center', rotation='vertical', fontsize=24)
     plt.tight_layout()
     
     # save
@@ -1527,3 +1542,38 @@ def swap_short_telos_group_number(row):
     elif row == 2:
         row =1
     return row
+              
+              
+def fit_model_return_df_predictions(test_set=None, fit_model=None):
+    """
+    USAGE:
+    df_predictions = fit_model_return_df_predictions(test_set=test_set, fit_xgb_model=fit_xgb_model)
+    
+    Args:
+        test_set (df):
+        pandas df containing test_set data w/o pipeline cleaning or feature engineering
+        
+        fit_xgb_model ('MODEL'):
+        model already fit on training data - could be XGboost, linear regression, etc., as long
+        as the model has a predict() method that returns an array of predicted values
+    
+    Returns:
+        full_df (df):
+        pandas df containing reconstituted test_set data (all patient IDs, target, etc.) & predictions
+    """
+    # creating pipeline object to manipulate test data
+    test_clean_process_pipe = Pipeline([('features', make_features(make_log_target=False)), 
+                                        ('dummies', make_dummies(drop_first=True)),
+                                        ('cleaner', clean_data(drop_patient_id=False))])
+    # initializing new df & fitting
+    testing = test_set.copy()
+    testing = test_clean_process_pipe.fit_transform(testing)
+    
+    # retaining patient id & target in separate object
+    testing_patient_id_target = testing[['patient id', '4 C telo means']].copy()
+    testing.drop(['patient id', '4 C telo means'], axis=1, inplace=True)
+    
+    # predicting values & combining with test_set & patient ID + target
+    predict = fit_model.predict(testing)
+    full_df = pd.concat([testing, testing_patient_id_target, pd.DataFrame({'predictions':predict})], axis=1)
+    return full_df
