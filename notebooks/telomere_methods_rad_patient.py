@@ -1364,7 +1364,7 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
     graphing_dict = {}
     for features, target1, target2 in zip(features_list, target1_list, target2_list):
         # loading chr aberr data
-        all_chr_aberr_df = pd.read_csv('../compiled patient data csv files/all_chr_aberr_df.csv')
+        all_chr_aberr_df = pd.read_csv('../data/compiled patient data csv files/all_chr_aberr_df.csv')
         # initializing general cleaner pipeline for data
         general_cleaner = Pipeline([('cleaner', general_chr_aberr_cleaner())])
         # cleaning data
