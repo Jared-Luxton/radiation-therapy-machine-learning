@@ -12,7 +12,7 @@ Telomeres are critical features at the ends of linear chromosomes, which guard t
 &nbsp;   
 
 ## Research problem and objective
-At present, no efficacious clinical means exist for predicting a patient’s radiation-sensitivity using pre-therapy data, preventing proper guidance of treatment decisions and unnecessary patient harm. Here, we explore the utility of telomeres propose generation of an imaging dataset could enable development of a machine learning tool capable of predicting which patients are likely to develop radiation late-effects using pre-therapy telomere data. Such a tool, capable of accurately predicting radiation late-effects, would improve personalized treatment decisions for patients predicted to be high-risk.
+At present, no efficacious clinical means exist for predicting a patient’s radiation-sensitivity, and thus health outcomes post-therapy, using pre-therapy data, preventing proper guidance of treatment decisions and unnecessary patient harm. Here, we explore the utility of telomeres and chromosome rearrangements for predicting which patients are likely to develop radiation late-effects using pre-therapy telomere data.
 &nbsp;   
 
 ## Data handling/workflow
