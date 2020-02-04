@@ -1194,14 +1194,19 @@ def plot_results(timeSeries, D, cut_off_level, y_size, x_size, verbose):
         clusters = result.unique() 
         fig = plt.subplots(figsize=(x_size, y_size))   
         mimg = math.ceil(cut_off_level/2.0)
-        gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])   
+        gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])
+        cluster_indexed = pd.concat([result, timeSeries.reset_index()], axis=1)
+        cluster_indexed.rename({0: 'clusters'}, axis=1, inplace=True)
+        
         for ipic, c in enumerate(clusters):
-            cluster_index = result[result==c].index
-            print(ipic, "Cluster number %d has %d elements" % (c, len(cluster_index)))
+            clustered = cluster_indexed[cluster_indexed['clusters'] == c].copy()
+            print(ipic, "Cluster number %d has %d elements" % (c, len(clustered['patient id'])))
+            melt = clustered.melt(id_vars=['patient id', 'clusters'], var_name='timepoint',value_name='telo means')
             ax1 = plt.subplot(gs[ipic])
-            ax1.plot(timeSeries.T.iloc[:,cluster_index])
-            ax1.set_title((f'Cluster number {c}'), fontsize=15, fontweight='bold')      
-        plt.show()
+            sns.lineplot(x='timepoint', y='telo means', hue='patient id', data=melt, legend=False, ax=ax1)
+            ax1.set_title((f'Cluster number {c}'), fontsize=15, fontweight='bold')
+        plt.tight_layout()
+        
     return result
         
         
