@@ -403,7 +403,7 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
             
             graph_four_histograms(non_irrad, n_bins, non_irrad, irrad_4_Gy, three_B, four_C,
                                                 '1 non irrad', '2 irrad @ 4 Gy', '3 B', '4 C', znorm)
-            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/all patients individual telos dist znorm {znorm}.png', 
+            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/all patients individual telos dist znorm {znorm} {list(data["patient id"].unique())}.png', 
                         dpi=400)
     
     elif groupby == 'patient id':
@@ -421,7 +421,7 @@ def histogram_plot_groups(x=None, data=None, groupby=None, iterable=None, n_bins
                                   f'patient #{item} 3 B', 
                                   f'patient #{item} 4 C',
                                   znorm)
-            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/individual telos patient#{item} znorm {znorm}.png', 
+            plt.savefig(f'../graphs/paper figures/supp figs/individ telo distributions/individual telos patient#{item} znorm {znorm} {list(data["patient id"].unique())}.png', 
                         dpi=400)
 
 def graph_four_histograms(quartile_ref, n_bins, 
@@ -431,7 +431,8 @@ def graph_four_histograms(quartile_ref, n_bins,
     n_bins = n_bins
     fig, axs = plt.subplots(2,2, sharey=True, sharex=True, 
                             constrained_layout=True, 
-                            figsize = (8, 6))
+#                             figsize = (8, 6),
+                            figsize = (7.5, 5.5))
     sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
 
     histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, df1, quartile_ref, name1, 0, 0, znorm)
@@ -461,7 +462,7 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
     axs[axsNUMone,axsNUMtwo].set_title(f"{astroname}", fontsize=14,)
     axs[axsNUMone,axsNUMtwo].tick_params(labelsize=12)
                 
-    font_axes=14
+    font_axes=12
 
     if axsNUMone == 0 and axsNUMtwo == 0:
         axs[axsNUMone,axsNUMtwo].set_ylabel("Individual Telomere Counts", fontsize=font_axes)
@@ -473,7 +474,7 @@ def histogram_stylizer_divyBins_byQuartile(fig, axs, n_bins, astroDF, astroquart
     if axsNUMone == 1 and axsNUMtwo == 1:
         axs[axsNUMone,axsNUMtwo].set_xlabel("Bins of Individual Telomeres (RFI)", fontsize=font_axes)
 
-    axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(12))
+    axs[axsNUMone,axsNUMtwo].xaxis.set_major_locator(plt.MaxNLocator(9))
             
         
 
@@ -1244,15 +1245,31 @@ def cluster_data_return_df(df, target='telo means', cut_off_n=4,
     return melted
 
 
-def graph_cluster_groups(df, target=None, hue=None):
+def graph_cluster_groups(df, target=None, hue=None, figsize=(7,3.2)):
     flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
     
-    ax = sns.set(font_scale=1.5)
-    ax = sns.lineplot(x='timepoint', y=target, data=df, hue=hue, legend='full',
+    plt.figure(figsize=figsize)
+    ax = sns.lineplot(x='timepoint', y=target, data=df, hue=hue,
             palette=sns.color_palette(flatui[:len(df[hue].unique())]))
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0)
-    plt.setp(ax.get_xticklabels(), rotation=45)
+
+    plt.setp(ax.get_xticklabels(), rotation=45, fontsize=14)
+    if target == 'telo means':
+        ax.set_ylabel('Mean Telomere Length', fontsize=14)
+    elif target != 'telo means':
+        ax.set_ylabel('Number of short telomeres', fontsize=14)
+        
+    ax.set_xlabel('', fontsize=14)
+    ax.tick_params(labelsize=14)
     
+    legend = ax.legend()
+    legend.texts[0].set_text('Cluster groups')
+    
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.18),
+          ncol=3, fancybox=True, fontsize=14)
+    
+    plt.savefig(f'../graphs/paper figures/main figs/CLUSTERED GROUPS all patient {target} teloFISH.png', 
+            dpi=400, bbox_inches = "tight")
+
 
 def graph_clusters_per_patient(df, target=None, cluster_name=None,
                                y_dimen=2, x_dimen=2, fsize=(9,8)):
@@ -1305,16 +1322,31 @@ def eval_make_test_comparisons(df=None, timepoints=None, test=None, test_name=No
 ################################################################
 
               
-def telos_scipy_anova_post_hoc_tests(df=None, time_col='timepoint', target='individual telomeres',
-                                     sig_test=stats.f_oneway, post_hoc=None):
-
-    g_1 = df[df['timepoint'] == '1 non irrad'][target]
-    g_2 = df[df['timepoint'] == '2 irrad @ 4 Gy'][target]
-    g_3 = df[df['timepoint'] == '3 B'][target]
-    g_4 = df[df['timepoint'] == '4 C'][target]
-    statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
-    print(f'ONE WAY ANOVA for telomere length: {p_value}')
+def telos_scipy_anova_post_hoc_tests(df0=None, time_col='timepoint', target='individual telomeres',
+                                     sig_test=stats.f_oneway, post_hoc=None, repeated_measures=False):
+    df = df0.copy()
+    df.rename({'individual telomeres': 'individual_telomeres',
+               'telo means': 'telo_means',
+               'patient id': 'patient_id'}, axis=1, inplace=True)
               
+    if ' ' in target:
+        target = target.replace(' ', '_')
+    
+    if repeated_measures == False:
+        g_1 = df[df['timepoint'] == '1 non irrad'][target]
+        g_2 = df[df['timepoint'] == '2 irrad @ 4 Gy'][target]
+        g_3 = df[df['timepoint'] == '3 B'][target]
+        g_4 = df[df['timepoint'] == '4 C'][target]
+        statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
+        print(f'ONE WAY ANOVA for telomere length: {p_value}')
+              
+    elif repeated_measures:
+        results = AnovaRM(df, target, 'patient_id', 
+                          within=['timepoint'], aggregate_func='mean').fit()
+        # pvalue
+        p_value = results.anova_table['Pr > F'][0]
+        print(f'REPEATED MEASURES ANOVA for telomere length: {p_value}')     
+          
     # if anova detects sig diff, perform post-hoc tests
     if p_value <= 0.05:
         mc = MultiComparison(df[target], df['timepoint'])
@@ -1322,31 +1354,47 @@ def telos_scipy_anova_post_hoc_tests(df=None, time_col='timepoint', target='indi
         print(mc_results)
               
               
-def chr_scipy_anova_post_hoc_tests(df=None, flight_status_col='timepoint',
-                                   sig_test=stats.f_oneway, post_hoc=sp.posthoc_ttest):
+def chr_scipy_anova_post_hoc_tests(df0=None, flight_status_col='timepoint',
+                                   sig_test=stats.f_oneway, post_hoc=sp.posthoc_ttest,
+                                   repeated_measures=False):
     """
     df should be melted by aberration type
     """
+              
+    df = df0.copy()
+              
     # make list of aberrations
-    aberrations = list(df['aberration type'].unique())
+    df.rename({'patient id':' patient_id',
+               'count per cell': 'count_per_cell',
+               'aberration type': 'aberration_type'}, axis=1, inplace=True)
+              
+    aberrations = list(df['aberration_type'].unique())
     
     # loop through aberrations & perform anovas between pre/mid/post
     for aberr in aberrations:
-        g_1 = df[(df[flight_status_col] == '1 non irrad') & (df['aberration type'] == aberr)]['count per cell']
-        g_2 = df[(df[flight_status_col] == '2 irrad @ 4 Gy') & (df['aberration type'] == aberr)]['count per cell']
-        g_3 = df[(df[flight_status_col] == '3 B') & (df['aberration type'] == aberr)]['count per cell']
-        g_4 = df[(df[flight_status_col] == '4 C') & (df['aberration type'] == aberr)]['count per cell']
-        statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
+        if repeated_measures == False:
+            g_1 = df[(df[flight_status_col] == '1 non irrad') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_2 = df[(df[flight_status_col] == '2 irrad @ 4 Gy') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_3 = df[(df[flight_status_col] == '3 B') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_4 = df[(df[flight_status_col] == '4 C') & (df['aberration_type'] == aberr)]['count_per_cell']
+            statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
+              
+        elif repeated_measures:
+            results = AnovaRM(df[df['aberration_type'] == aberr].copy(), 'count_per_cell', 'patient_id', 
+                              within=['timepoint'], aggregate_func='mean').fit()
+            # pvalue
+            p_value = results.anova_table['Pr > F'][0]
+            
         print(aberr, p_value)
         
         # if anova detects sig diff, perform post-hoc tests
         if p_value <= 0.05:
             if post_hoc == 'tukeyHSD':
-                mc = MultiComparison(df[df['aberration type'] == aberr]['count per cell'], 
-                                     df[df['aberration type'] == aberr]['timepoint'])
+                mc = MultiComparison(df[df['aberration_type'] == aberr]['count_per_cell'], 
+                                     df[df['aberration_type'] == aberr]['timepoint'])
                 print(mc.tukeyhsd())
             else:
-                display(post_hoc(df[df['aberration type'] == aberr], val_col='count per cell', 
+                display(post_hoc(df[df['aberration_type'] == aberr], val_col='count_per_cell', 
                         group_col='timepoint', equal_var=False))
         print('\n')
               
@@ -1438,11 +1486,9 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
                                     features='individual telomeres',
                                     target='4 C telo means'):
     # create subplot object
-    fig, ax = plt.subplots(3, 5, figsize=(24,15), 
-#                            sharex='col', 
-                           sharey='row'
+    fig, ax = plt.subplots(3, 5, figsize=(16,10), sharey='row',
+#                            figsize=(24,15), sharex='col', 
                           )
-
     # create flattened axes, loop through axes and populate w/ histograms & data
     axes = ax.ravel()
     for i, id_num in zip(axes, df['patient id'].unique()):
@@ -1459,29 +1505,26 @@ def plot_individ_telos_ML_objective(df=None, timept_col='timepoint',
         i.tick_params(labelsize=14)
         i.xaxis.set_major_locator(plt.MaxNLocator(4))
         i.set_xlabel('')
-        i.set_title(f'patient #{id_num}', fontsize=18)
+        i.set_title(f'patient #{id_num}', fontsize=14)
     axes[-1].axis('off')
-#     axes[-1].grid(False)
-#     axes[-1].set_facecolor('white')
-#     axes[-1].set_yticks([])
-#     axes[-1].set_title('')
 
     # create legend
     handles, labels = i.get_legend_handles_labels()
+              
     # create line object to represent 4 C target drawn on plots & append to legend objects
     vertical_line = lines.Line2D([], [], color='black', linestyle='--')
     handles.append(vertical_line)
     labels.append(f'{target} per patient')
-    plt.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., fontsize=22)
+    plt.legend(handles, labels, bbox_to_anchor=(0, .8), loc=2, borderaxespad=0., fontsize=14)
 
     # label axes
-    fig.text(0.5, -.005, 'Bins of Individual Telomeres (RFI)', ha='center', va='center', fontsize=24)
-    fig.text(-.005, 0.5, 'Individual Telomere Counts', ha='center', va='center', rotation='vertical', fontsize=24)
+    fig.text(0.5, .005, 'Bins of Individual Telomeres (RFI)', ha='center', va='center', fontsize=14)
+    fig.text(0, 0.5, 'Individual Telomere Counts', ha='center', va='center', rotation='vertical', fontsize=14)
     plt.tight_layout()
     
-    # save
-    plt.savefig(f'../graphs/paper figures/supp figs/visualize {target} objective individual telos ML model.png', 
-                dpi=400, bbox_inches = "tight")
+    plt.savefig(f'../graphs/paper figures/main figs/ML viz {target} objective teloFISH.png', 
+            dpi=400, bbox_inches = "tight")
+    
               
               
 def df_to_png(df=None, path=None):
