@@ -1250,7 +1250,8 @@ def graph_cluster_groups(df, target=None, hue=None, figsize=(7,3.2)):
     
     plt.figure(figsize=figsize)
     ax = sns.lineplot(x='timepoint', y=target, data=df, hue=hue,
-            palette=sns.color_palette(flatui[:len(df[hue].unique())]))
+                      palette=sns.color_palette(flatui[:len(df[hue].unique())]),
+                      style=hue)
 
     plt.setp(ax.get_xticklabels(), rotation=45, fontsize=14)
     if target == 'telo means':
@@ -1625,3 +1626,6 @@ def fit_model_return_df_predictions(test_set=None, fit_model=None):
     predict = fit_model.predict(testing)
     full_df = pd.concat([testing, testing_patient_id_target, pd.DataFrame({'predictions':predict})], axis=1)
     return full_df
+              
+              
+              
