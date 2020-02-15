@@ -35,12 +35,8 @@ The notebooks which document and execute the data analysis for this project are 
 * Extensive evaluation of model metrics
 * Hierarchical clustering of patients using longitudinal data into high/low risk sub-groups
 
-**04_radiation_therapy_patients_data_DATA_STORY.ipynb**
-* **IN PROGRESS**
-* Cohesive data story in jupyter notebook format
-* Highlights and major implications from the analysis
 ---
-### To launch all 4 notebooks (may be slow):
+### To launch all  notebooks (may be slow):
 | Jupyter Lab |
 | ---                       |
 | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab)|
@@ -51,7 +47,6 @@ The notebooks which document and execute the data analysis for this project are 
 | [01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb) | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F01_radiation_therapy_patients_data_EXTRACTION_CLEANING.ipynb) | [HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/01_radiation_therapy_patients_data_EXTRACTION_CLEANING.html) |
 | [02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.html) |
 | [03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.html) |
-| [04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/04_radiation_therapy_patients_data_STORY_HIGHLIGHTS.html) 
 
 &nbsp;   
 
