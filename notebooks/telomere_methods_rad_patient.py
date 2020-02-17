@@ -42,6 +42,8 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multicomp import MultiComparison
 import scikit_posthocs as sp
 from statsmodels.stats.anova import AnovaRM
+from statsmodels.stats.libqsturng import psturng
+import random
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
@@ -731,7 +733,7 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, n_iter):
 
 def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means',
                           model=None, cv=5, scoring='neg_mean_absolute_error', verbose=True):
-    
+    random.seed(888)
     row = []
     features = [col for col in train_set.columns if col != target and col != 'patient id']
     
@@ -772,6 +774,7 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
     telo_data = telo_data.copy()
     test_set_copy = test_set.copy()
     test_set_cleaner = clean_process_pipe
+    
     if 'telo' in target:
         test_set_cleaned = test_set_cleaner.set_params(cleaner__drop_patient_id=False).fit_transform(test_set_copy)
     else:
@@ -994,7 +997,8 @@ class general_chr_aberr_cleaner(BaseEstimator, TransformerMixin):
         X = self.drop_columns(X)
         X = self.drop_patient_ID(X)
         
-        X.rename(columns={'dicentrics': '# dicentrics'}, inplace=True)
+        X.rename(columns={'dicentrics': '# dicentrics',
+                          'excess chr fragments': '# excess chr fragments'}, inplace=True)
         # data is arranged as events (chr aberr) per chromosome per cell; first sum per cell
         X = X.groupby(['patient id', 'timepoint', 'cell number']).agg('sum').reset_index()
         X.drop(['cell number'], axis=1, inplace=True) 
@@ -1014,7 +1018,8 @@ class make_chr_features(BaseEstimator, TransformerMixin):
     
     
     def total_inversions(self, X, y=None):
-        X['# total inversions'] = X['# inversions'] + X['# terminal inversions']
+        X['# inversions'] = X['# inversions'] + X['# terminal inversions']
+        X.drop(['# terminal inversions'], axis=1, inplace=True)
         return X
     
     
@@ -1353,11 +1358,14 @@ def telos_scipy_anova_post_hoc_tests(df0=None, time_col='timepoint', target='ind
         mc = MultiComparison(df[target], df['timepoint'])
         mc_results = mc.tukeyhsd()
         print(mc_results)
+        res = mc_results
+        print(f'pvalues: {list(psturng(np.abs(res.meandiffs / res.std_pairs), len(res.groupsunique), res.df_total))}')
               
               
-def chr_scipy_anova_post_hoc_tests(df0=None, flight_status_col='timepoint',
-                                   sig_test=stats.f_oneway, post_hoc=sp.posthoc_ttest,
-                                   repeated_measures=False):
+def chr_scipy_anova_post_hoc_tests(df0=None, timepoint='timepoint',
+                                   sig_test=stats.f_oneway, repeated_measures=False,
+                                   post_hoc=sp.posthoc_ttest, 
+                                   equal_var=False, pool_sd=False):
     """
     df should be melted by aberration type
     """
@@ -1365,7 +1373,7 @@ def chr_scipy_anova_post_hoc_tests(df0=None, flight_status_col='timepoint',
     df = df0.copy()
               
     # make list of aberrations
-    df.rename({'patient id':' patient_id',
+    df.rename({'patient id':'patient_id',
                'count per cell': 'count_per_cell',
                'aberration type': 'aberration_type'}, axis=1, inplace=True)
               
@@ -1374,15 +1382,15 @@ def chr_scipy_anova_post_hoc_tests(df0=None, flight_status_col='timepoint',
     # loop through aberrations & perform anovas between pre/mid/post
     for aberr in aberrations:
         if repeated_measures == False:
-            g_1 = df[(df[flight_status_col] == '1 non irrad') & (df['aberration_type'] == aberr)]['count_per_cell']
-            g_2 = df[(df[flight_status_col] == '2 irrad @ 4 Gy') & (df['aberration_type'] == aberr)]['count_per_cell']
-            g_3 = df[(df[flight_status_col] == '3 B') & (df['aberration_type'] == aberr)]['count_per_cell']
-            g_4 = df[(df[flight_status_col] == '4 C') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_1 = df[(df[timepoint] == '1 non irrad') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_2 = df[(df[timepoint] == '2 irrad @ 4 Gy') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_3 = df[(df[timepoint] == '3 B') & (df['aberration_type'] == aberr)]['count_per_cell']
+            g_4 = df[(df[timepoint] == '4 C') & (df['aberration_type'] == aberr)]['count_per_cell']
             statistic, p_value = sig_test(g_1, g_2, g_3, g_4)
               
         elif repeated_measures:
             results = AnovaRM(df[df['aberration_type'] == aberr].copy(), 'count_per_cell', 'patient_id', 
-                              within=['timepoint'], aggregate_func='mean').fit()
+                              within=[timepoint], aggregate_func='mean').fit()
             # pvalue
             p_value = results.anova_table['Pr > F'][0]
             
@@ -1392,11 +1400,13 @@ def chr_scipy_anova_post_hoc_tests(df0=None, flight_status_col='timepoint',
         if p_value <= 0.05:
             if post_hoc == 'tukeyHSD':
                 mc = MultiComparison(df[df['aberration_type'] == aberr]['count_per_cell'], 
-                                     df[df['aberration_type'] == aberr]['timepoint'])
+                                     df[df['aberration_type'] == aberr][timepoint])
                 print(mc.tukeyhsd())
+                res = mc.tukeyhsd()
+                print(f'{aberr} pvalues: {list(psturng(np.abs(res.meandiffs / res.std_pairs), len(res.groupsunique), res.df_total))}')
             else:
                 display(post_hoc(df[df['aberration_type'] == aberr], val_col='count_per_cell', 
-                        group_col='timepoint', equal_var=False))
+                        group_col=timepoint, equal_var=equal_var, pool_sd=pool_sd))
         print('\n')
               
 
@@ -1415,6 +1425,7 @@ def z_norm_individual_telos(exploded_telos_df=None):
               
 def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, target1_list=None, target2_list=None, 
                                                         stats_list=None, verbose=True):
+    random.seed(888)
     graphing_dict = {}
     for features, target1, target2 in zip(features_list, target1_list, target2_list):
         # loading chr aberr data
@@ -1427,7 +1438,8 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
         chr_train, chr_test = train_test_split(cleaned_chr_df, test_size=0.2, shuffle=True, 
                                            stratify=cleaned_chr_df[['patient id', 'timepoint']])
         # initializing pipeline to generate features + target from data for machine learning
-        make_new_features_target = Pipeline([('make features', make_chr_features(combine_inversions=False, bool_features=False, 
+        make_new_features_target = Pipeline([('make features', make_chr_features(combine_inversions=True, 
+                                                                                 bool_features=False, 
                                                                                  features=features)),
                                              ('make target merge', make_target_merge(target=target1, features=features))])
         # making new train/test dataframes w/ features & target
@@ -1470,7 +1482,8 @@ def script_load_clean_data_ml_pipeline_loop_aberrations(features_list=None, targ
 def make_stats_df(stats_list=None):    
     stats_df = pd.DataFrame(data=stats_list, columns=['Model', 'Features', 'Target', 
                                                       'Average MAE of CV folds', 'Std dev of MAE of CV folds', 
-                                                      'MAE predicted vs. test values', 'R2 predicted vs. test values'])
+                                                      'MAE predicted vs. test values', 'R2 predicted vs. test values',
+                                                      'N samples training data'])
     return stats_df
               
 def make_graphing_df(graphing_dict=None):
@@ -1559,8 +1572,12 @@ def plot_multiple_types_clusters(y_list=None, hue_list=None,
                     palette=sns.color_palette(flatui[:len(df[hue].unique())]),)
         # manipulating axes, legend
         plt.setp(ax_n.get_xticklabels(), rotation=30)
-        ax_n.legend(fontsize=12, loc='upper center')
-        ax_n.set_ylim(ylim_dict[y])  
+        ax_n.legend(fontsize=12, loc='upper center',)
+        ax_n.set_ylim(ylim_dict[y])
+              
+        ax_n.set_ylabel(y, fontsize=14)
+        ax_n.set_xlabel('')
+        ax_n.tick_params(labelsize=14)
           
     # make final plot blank for chr aberr fig
     if len(y_list) > 2:       
@@ -1573,10 +1590,10 @@ def plot_multiple_types_clusters(y_list=None, hue_list=None,
         
     # save
     if 'telo means' in y_list and '# short telomeres' in y_list:
-        plt.savefig(f'../graphs/paper figures/main figs/viz clustering groups {y_list[0]} and {y_list[1]}.png', 
+        plt.savefig(f'../graphs/paper figures/main figs/CLUSTERED GROUPS {y_list[0]} and {y_list[1]}.png', 
                     dpi=400, bbox_inches = "tight")
     else:
-        plt.savefig(f'../graphs/paper figures/main figs/viz all chr aberrations.png', 
+        plt.savefig(f'../graphs/paper figures/main figs/CLUSTERED GROUPS all chr aberrations.png', 
                     dpi=400, bbox_inches = "tight")
               
               
@@ -1628,4 +1645,86 @@ def fit_model_return_df_predictions(test_set=None, fit_model=None):
     return full_df
               
               
+def graph_all_aberrations_freq(melt_aberrations=None, aberr_list=None):
               
+    if aberr_list == None:
+        aberr_list = ['# inversions', '# translocations', '# dicentrics', '# excess chr fragments',
+                      '# sister chromatid exchanges']
+              
+    else: 
+        aberr_list = aberr_list
+              
+    for aberr in aberr_list:
+
+        df = melt_aberrations[melt_aberrations['aberration type'] == aberr].copy()
+        df.rename({'timepoint':'Time point'}, axis=1, inplace=True)
+
+        if aberr == '# inversions' or aberr == '# terminal inversions':
+            ylim_mult = 3
+
+        elif aberr != '# inversions' and aberr != '# terminal inversions' and aberr != '# sister chromatid exchanges':
+            ylim_mult = 4.5
+              
+        else:
+            ylim_mult = 2
+
+        ax = sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
+        plt.figure(figsize=(7,3.2))
+        ax = sns.barplot(x='Time point', y='count per cell', data=df)
+
+        fontsize=14
+
+        ax.set_xlabel('',)
+        ax.tick_params(labelsize=fontsize)
+        plt.ylim(0, df['count per cell'].mean()*ylim_mult)
+        plt.ylabel('Average frequency per cell', fontsize=fontsize)
+        plt.title(aberr, fontsize=fontsize)
+
+        plt.savefig(f'../graphs/paper figures/supp figs/all patients aberr type {aberr} rearrangements.png', dpi=400,
+                    bbox_inches = "tight")
+              
+              
+def make_clustered_heatmap(df=None, target=None, cb_target_label=None):
+
+    pivot = df.pivot_table(index=['patient id'], columns='timepoint', values=target).reset_index()
+    pivot.columns.name = ''
+
+    pivot = pivot[pivot['patient id'] != 13].copy()
+    pivot.set_index(pivot['patient id'], inplace=True)
+    pivot.drop(['patient id'], axis=1, inplace=True)
+
+    g = sns.clustermap(pivot, method='single', metric='correlation',
+                       z_score=0, figsize=(7,7), cmap='PRGn',
+    #                    standard_scale=0, 
+                       col_cluster=False,
+                       cbar_kws={},) 
+    font_size=14
+
+    # colorbar 
+    g.cax.set_position([-0.05, .2, .03, .45])
+    g.cax.set_ylabel(cb_target_label, rotation=90, fontsize=font_size)
+    g.cax.tick_params(labelsize=12)
+
+    # modifying y axis
+    g.ax_heatmap.set_ylabel('Patient ID', fontsize=font_size)
+    labels = g.ax_heatmap.yaxis.get_majorticklabels()
+    plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), fontsize=font_size)
+    plt.setp(g.ax_heatmap.yaxis.get_minorticklabels(), fontsize=font_size)
+    g.ax_heatmap.set_yticklabels(labels, rotation=0, fontsize=font_size, va="center")
+
+    # modifying x axis
+    plt.setp(g.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, fontsize=font_size)
+
+    for a in g.ax_row_dendrogram.collections:
+        a.set_linewidth(1)
+    for a in g.ax_col_dendrogram.collections:
+        a.set_linewidth(1)
+              
+    assay = ''
+    if 'telo' in target:
+        assay = 'teloFISH'
+    elif 'telo' not in target:
+        assay = 'dGH'
+
+    plt.savefig(f'../graphs/paper figures/main figs/CLUSTERING heatmap all patient by {target} {assay}.png', 
+                dpi=400, bbox_inches = "tight")
