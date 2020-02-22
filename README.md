@@ -1,4 +1,4 @@
-# Utility of telomere length and chromosome rearrangements for predicting radiation late effects
+# Utility of telomere length and chromosome aberrations with machine learning (XGBoost) for inferring patient risks for radiation late effects
 
 This repository is a supplement to my upcoming paper. 
 &nbsp;   
