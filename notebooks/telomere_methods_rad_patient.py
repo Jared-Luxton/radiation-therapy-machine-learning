@@ -44,6 +44,7 @@ import scikit_posthocs as sp
 from statsmodels.stats.anova import AnovaRM
 from statsmodels.stats.libqsturng import psturng
 import random
+import six
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
@@ -641,44 +642,46 @@ def calc_telomere_length_post_relative_pre(row):
 
 
 def combine_data(exploded_telos=None, all_patients_df=None, 
-                 prediction_objective='4 C means from individual telos',
+                 pred_obj='4 C means from individual telos',
                  timepoints_keep=['1 non irrad', '2 irrad @ 4 Gy']):
     
-    if prediction_objective == '4 C means from individual telos': 
+    if pred_obj == '4 C means from individual telos': 
         col_to_rename = 'telo means'
         col_to_keep = 'individual telomeres'
         target = '4 C telo means'
         
-    elif prediction_objective == '4 C means from telo means':
+    elif pred_obj == '4 C means from telo means':
         col_to_rename = 'telo means'
         col_to_keep = 'telo means'
         target = '4 C telo means'
         
-    elif prediction_objective == '4 C # short telos from individual telos':
+    elif pred_obj == '4 C # short telos from individual telos':
         col_to_rename = 'Q1'
         col_to_keep = 'individual telomeres'
         target = '4 C # short telos'
+        
+    elif pred_obj == '4 C # long telos from individual telos':
+        col_to_rename = 'Q4'
+        col_to_keep = 'individual telomeres'
+        target = '4 C # long telos'
     
     # pulling out 4 C
     four_C = all_patients_df[all_patients_df['timepoint'] == '4 C'][['patient id', col_to_rename, 'timepoint']]
     four_C.rename(columns={col_to_rename: target}, inplace=True)
 
-    if prediction_objective == '4 C means from individual telos':
+    if pred_obj == '4 C means from individual telos':
         # merging individual telomere data w/ 4 C telo means on patient id
         telo_data = (exploded_telos[exploded_telos['timepoint'] != '4 C']
                  .merge(four_C[[target, 'patient id']], on=['patient id']))
     
-    elif prediction_objective == '4 C means from telo means':
+    elif pred_obj == '4 C means from telo means':
         telo_data = (all_patients_df[all_patients_df['timepoint'] != '4 C']
              .merge(four_C[[target, 'patient id']], on=['patient id']))
     
-    elif prediction_objective == '4 C # short telos from individual telos':
+    elif pred_obj == '4 C # short telos from individual telos' or pred_obj == '4 C # long telos from individual telos':
         telo_data = (exploded_telos[exploded_telos['timepoint'] != '4 C']
                  .merge(four_C[[target, 'patient id']], on=['patient id']))
 
-#     cols to retain
-#     cols_to_drop = [col for col in telo_data.columns if col not in cols_keep]
-#     telo_data.drop(cols_to_drop, axis=1, inplace=True)
     telo_data = telo_data[['patient id', 'timepoint', col_to_keep, target]].copy()
     
     # timepoints of interest
@@ -1258,11 +1261,15 @@ def graph_cluster_groups(df, target=None, hue=None, figsize=(7,3.2)):
                       palette=sns.color_palette(flatui[:len(df[hue].unique())]),
                       style=hue)
 
-    plt.setp(ax.get_xticklabels(), rotation=45, fontsize=14)
+    plt.setp(ax.get_xticklabels(), 
+#              rotation=45, 
+             fontsize=14)
     if target == 'telo means':
         ax.set_ylabel('Mean Telomere Length', fontsize=14)
-    elif target != 'telo means':
+    elif 'short' in target:
         ax.set_ylabel('Number of short telomeres', fontsize=14)
+    elif 'long' in target:
+        ax.set_ylabel('Number of long telomeres', fontsize=14)
         
     ax.set_xlabel('', fontsize=14)
     ax.tick_params(labelsize=14)
@@ -1728,3 +1735,29 @@ def make_clustered_heatmap(df=None, target=None, cb_target_label=None):
 
     plt.savefig(f'../graphs/paper figures/main figs/CLUSTERING heatmap all patient by {target} {assay}.png', 
                 dpi=400, bbox_inches = "tight")
+              
+              
+def render_mpl_table(data, col_width=3.0, row_height=0.625, font_size=14,
+                     header_color='#40466e', row_colors=['#f1f1f2', 'w'], edge_color='black',
+                     bbox=[0, 0, 1, 1], header_columns=0, path=None,
+                     ax=None, **kwargs):
+    if ax is None:
+        size = (np.array(data.shape[::-1]) + np.array([0, 1])) * np.array([col_width, row_height])
+        fig, ax = plt.subplots(figsize=size)
+        ax.axis('off')
+
+    mpl_table = ax.table(cellText=data.values, bbox=bbox, colLabels=data.columns, **kwargs)
+
+    mpl_table.auto_set_font_size(False)
+    mpl_table.set_fontsize(font_size)
+
+    for k, cell in six.iteritems(mpl_table._cells):
+        cell.set_edgecolor(edge_color)
+        if k[0] == 0 or k[1] < header_columns:
+            cell.set_text_props(weight='bold', color='w')
+            cell.set_facecolor(header_color)
+        else:
+            cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
+    if path != None:
+        plt.savefig(path, dpi=400, bbox_inches='tight')
+    return ax
