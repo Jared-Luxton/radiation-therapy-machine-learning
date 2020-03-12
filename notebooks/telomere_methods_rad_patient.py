@@ -1760,4 +1760,5 @@ def render_mpl_table(data, col_width=3.0, row_height=0.625, font_size=14,
             cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
     if path != None:
         plt.savefig(path, dpi=400, bbox_inches='tight')
-    return ax
+    
+    plt.close()
