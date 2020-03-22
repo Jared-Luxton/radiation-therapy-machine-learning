@@ -14,6 +14,7 @@ from matplotlib.ticker import StrMethodFormatter
 from matplotlib import colors
 from matplotlib.ticker import PercentFormatter
 from matplotlib import lines
+from matplotlib.offsetbox import AnchoredText
 import imgkit
 import seaborn as sns
 
@@ -45,6 +46,7 @@ from statsmodels.stats.anova import AnovaRM
 from statsmodels.stats.libqsturng import psturng
 import random
 import six
+
        
 def generate_dictionary_from_TeloLength_data(patharg):
     """
@@ -1762,3 +1764,128 @@ def render_mpl_table(data, col_width=3.0, row_height=0.625, font_size=14,
         plt.savefig(path, dpi=800, bbox_inches='tight')
     
     plt.close()
+              
+              
+def graph_cyto_cbc_data(plot_cyto_y=None, plot_cbc_y=None, df=None, fsize=(7,3.2),
+                        ax_color1='blue', ax_color2='green',
+                        alpha_c1=.8, alpha_c2=.5,
+                        cyto_name=None, cbc_name=None, ylim1=None, ylim2=None):
+
+    plt.figure(figsize=fsize)
+
+    ax = sns.lineplot(x='timepoint', y=plot_cyto_y, data=df, 
+                      color=ax_color1, **{'alpha':alpha_c1})
+
+    ax2 = ax.twinx()
+    sns.lineplot(x='timepoint', y=plot_cbc_y, data=df, 
+                 color=ax_color2, **{'alpha':alpha_c2}, ax=ax2)
+    
+    if ylim1:
+        ax.set_ylim(ylim1)
+    if ylim2:
+        ax2.set_ylim(ylim2)
+       
+    # labeling each y axis
+    ax.set_ylabel(cyto_name, fontsize=14)  
+    ax2.set_ylabel(cbc_name, fontsize=14)
+    
+    # removing timepoint label from x
+    ax.set_xlabel('', fontsize=14)
+    
+    # enforcing tick sizes
+    ax.tick_params(labelsize=14)
+    ax2.tick_params(labelsize=14)
+    plt.setp(ax.get_xticklabels(), fontsize=14)
+    
+    # enforcing dashed line for 2nd y axis
+    ax2.lines[0].set_linestyle("--")
+
+    # creating custom legend
+    handles = []
+    labels = []
+    
+    line1 = lines.Line2D([], [], color=ax_color1, alpha=alpha_c1, linestyle='-')
+    line2 = lines.Line2D([], [], color=ax_color2, alpha=alpha_c2, linestyle='--')
+    
+    handles.append(line1)
+    handles.append(line2)
+    
+    labels.append(cyto_name)
+    labels.append(cbc_name)
+
+    
+    plt.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.25),
+               ncol=3, fancybox=True, fontsize=14)
+    
+
+    # loc works the same as it does with figures (though best doesn't work)
+    # pad=5 will increase the size of padding between the border and text
+    # borderpad=5 will increase the distance between the border and the axes
+    # frameon=False will remove the box around the text
+    
+    r2_value = df[[plot_cyto_y, plot_cbc_y]].corr().iloc[0][1]
+    text = AnchoredText(f'R2= {r2_value.round(3)}', loc='upper right', frameon=False, prop={'fontsize':14,
+                                                                                            'fontweight':'bold'})
+    ax.add_artist(text)
+    
+    plt.savefig(f'../graphs/paper figures/main figs/LINEPLOT {cyto_name} vs {cbc_name}.png', 
+        dpi=400, bbox_inches = "tight")
+              
+              
+def visualize_individual_telos_model_behavior(df=None, fit_xgb_model=None, target=None):
+    
+    # preparing data dataframe
+    testing = df.copy()
+    testing.reset_index(drop=True, inplace=True)
+    testing_IDs = testing[['patient id', target]]
+    testing_features = testing[['timepoint', 'individual telomeres']].copy()
+    testing_features.reset_index(drop=True, inplace=True)
+
+    def apply_labels(row):
+        if row == '1 non irrad':
+            return 0
+        elif row == '2 irrad @ 4 Gy':
+            return 1
+
+    testing_features['timepoint_2 irrad @ 4 Gy'] = testing['timepoint'].apply(lambda row: apply_labels(row))
+    testing_features.drop(['timepoint'], axis=1, inplace=True)
+
+    
+    predictions = fit_xgb_model.predict(testing_features)
+    predict_vals = pd.DataFrame({'predictions':predictions})
+
+    combined = pd.concat([predict_vals, testing_features, testing_IDs], axis=1)
+    combined = combined[['patient id', 'timepoint_2 irrad @ 4 Gy', 'individual telomeres', target, 'predictions']]
+    display(combined.head(4))
+    
+    # graphing actual 4 C target vs. predicted target
+    sns.set_color_codes()
+    plt.figure(figsize=(8,6))
+    ax = sns.scatterplot(x=target, y='predictions', 
+                         hue='patient id', 
+                         data=combined, 
+                         s=80, 
+                         linewidth=.5, 
+                         edgecolor='black',
+                         legend='full', 
+                         palette='cubehelix')
+
+    ax.set_xlabel(f"Actual post-therapy {target}", fontsize=14)
+    ax.set_ylabel(f"Predicted post-therapy {target}", fontsize=14)
+    ax.tick_params(labelsize=14)
+    
+    # graphing individual telomeres vs. predicted target
+    sns.set_color_codes()
+    plt.figure(figsize=(8,6))
+    ax = sns.scatterplot(x='individual telomeres', y='predictions', 
+                         hue='patient id', 
+                         data=combined, 
+                         s=80, 
+                         linewidth=.5, 
+                         edgecolor='black',
+                         legend='full', 
+                         palette='cubehelix')
+
+    ax.set_xlabel(f"Individual telomeres", fontsize=14)
+    ax.set_ylabel(f"Predicted post-therapy {target}", fontsize=14)
+    ax.tick_params(labelsize=14)
