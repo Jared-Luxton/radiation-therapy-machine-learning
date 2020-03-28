@@ -44,11 +44,4 @@ The notebooks which document and execute the data analysis for this project are 
 | [02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/02_radiation_therapy_patients_data_VISUALIZATION_STATISTICS.html) |
 | [03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb](https://nbviewer.jupyter.org/github/Jared-Luxton/radiation-therapy-machine-learning/blob/master/notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jared-Luxton/radiation-therapy-machine-learning/master?urlpath=lab/tree/notebooks%2F03_radiation_therapy_patients_data_MACHINE_LEARNING.ipynb)|[HTML](https://raw.githack.com/Jared-Luxton/radiation-therapy-machine-learning/master/notebooks/html_copy_notebooks/03_radiation_therapy_patients_data_MACHINE_LEARNING.html) |
 
-&nbsp;   
-
-TO DO:  
-## Results
-&nbsp;   
-
-## Discussion
-&nbsp;   
+&nbsp;    
