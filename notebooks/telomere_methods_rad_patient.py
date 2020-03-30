@@ -755,6 +755,7 @@ def cv_score_fit_mae_test(train_set=None, test_set=None, target='4 C telo means'
         print(f'MEAN of MAE all folds: {scores.mean()}')
         print(f'STD of MAE all folds: {scores.std()}\n')
 
+
     # fitting the model
     model.fit(X_train, y_train)
 
@@ -798,6 +799,7 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
         test_patient_data = test_set_cleaned[test_set_cleaned['patient id'] == patient].copy()
         test_patient_data.drop(['patient id', target], axis=1, inplace=True)
         predict_4C = model.predict(test_patient_data)
+
         if verbose:
             print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
         y_predict_list.append(np.mean(predict_4C))
