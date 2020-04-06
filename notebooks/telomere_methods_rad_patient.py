@@ -1233,8 +1233,6 @@ def cluster_data_return_df(df, target='telo means', cut_off_n=4,
         df['timepoint'] = df['timepoint'].apply(lambda row: encode_timepts(row))
     df = df[['patient id', 'timepoint', target]].copy()
     df = df.pivot(index='patient id', values=target, columns='timepoint').reset_index()
-#     if 13 in df['patient id'].unique() and 'telo means' in df.columns:
-#         df.drop(11, inplace=True, axis=0)
     df.set_index('patient id', inplace=True)
     
     # run the clustering    
