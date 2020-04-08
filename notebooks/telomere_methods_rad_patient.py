@@ -1210,6 +1210,7 @@ def plot_results(timeSeries, D, cut_off_level, y_size, x_size, verbose):
         gs = gridspec.GridSpec(mimg,2, width_ratios=[1,1])
         cluster_indexed = pd.concat([result, timeSeries.reset_index()], axis=1)
         cluster_indexed.rename({0: 'clusters'}, axis=1, inplace=True)
+        display(cluster_indexed)
         
         for ipic, c in enumerate(clusters):
             clustered = cluster_indexed[cluster_indexed['clusters'] == c].copy()
