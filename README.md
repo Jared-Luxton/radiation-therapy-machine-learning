@@ -1,6 +1,7 @@
 # Telomere length and chromosomal instability for predicting individual radiosensitivity and risk via machine learning
 
-This repository is a supplement to my upcoming paper. 
+This repository is a supplement to my preprint: https://www.biorxiv.org/content/10.1101/2020.03.27.009043v3   
+and upcoming paper. 
 &nbsp;   
 
 ## One sentence summary
