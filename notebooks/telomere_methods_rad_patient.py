@@ -789,6 +789,7 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
     features = [col for col in test_set if col != target]
     y_predict_list = []
     y_true_list = []
+    patient_ids = []
 
     for patient in list(telo_data['patient id'].unique()):
         # calculate actual mean telomere length per patient w/ all individual telos
@@ -804,11 +805,12 @@ def predict_target_4C_compare_actual(telo_data=None, test_set=None,
             print(f'patient {patient}: ACTUAL {target}: {actual_4C:.2f} --- PREDICTED {target}: {np.mean(predict_4C):.2f}')
         y_predict_list.append(np.mean(predict_4C))
         y_true_list.append(actual_4C)
+        patient_ids.append(patient)
         
     print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
     print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
     
-    return y_predict_list, y_true_list
+    return y_predict_list, y_true_list, patient_ids
 
 
 class make_features(BaseEstimator, TransformerMixin):
