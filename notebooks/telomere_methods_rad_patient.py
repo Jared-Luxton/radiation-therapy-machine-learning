@@ -516,7 +516,6 @@ def color_seaborn_histogram(data, ax, n_bins, bin_vals):
         elif bin_vals[a] > np.quantile(data, 0.75): 
             ax.patches[a].set_facecolor('#ffbacd')
             
-        
 def plot_histogram_colored_stylizer(data=None, ax=None, n_bins=45):
     sns.set_style(style="darkgrid",rc= {'patch.edgecolor': 'black'})
     fig = plt.figure(figsize=(8,4))
@@ -524,13 +523,11 @@ def plot_histogram_colored_stylizer(data=None, ax=None, n_bins=45):
     bin_vals = np.histogram(data, n_bins)[1]   
     color_seaborn_histogram(data=data, ax=ax, n_bins=n_bins, bin_vals=bin_vals)
     
-    
 def grab_telo_data(patient_id_iterator=None, timepoint=None, df=None):
     data = df[(df['patient id'] == patient_id_iterator) &
               (df['timepoint'] == timepoint)]
     telos = data['individual telomeres']
-    return telos
-            
+    return telos   
         
 def make_timepoint_col(row):
     if 'A' in row:
@@ -545,13 +542,11 @@ def make_timepoint_col(row):
     else:
         pass
         
-        
 def make_patient_ID(row):
     if len(row) == 4:
         return row[2]
     elif len(row) == 5:
         return row[2:4]
-
 
 def change_sample_ID(row):
     if 'SW9C-2D' in row:
@@ -1170,6 +1165,7 @@ def chr_aberr_predict_target_4C_compare_actual(cleaned_unsplit_chr_data=None, cl
     
     if verbose:
         print(f'MAE predicted vs. actual {target}: {mean_absolute_error(y_true_list, y_predict_list)}')
+#         print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
         print(f'R2 predicted vs. actual {target}: {r2_score(y_true_list, y_predict_list)}')
     
     return y_predict_list, y_true_list
@@ -1892,3 +1888,18 @@ def visualize_individual_telos_model_behavior(df=None, fit_xgb_model=None, targe
     ax.set_xlabel(f"Individual telomeres", fontsize=14)
     ax.set_ylabel(f"Predicted post-therapy {target}", fontsize=14)
     ax.tick_params(labelsize=14)
+    
+    
+def patients_palette(set1='Paired', set2='Set2', alpha=.5):
+    
+    colors1 = sns.color_palette(set1, 12), 
+    t1 = (alpha,)
+    test1 = [x + t1 for x in colors1[0]]
+
+    colors2 = sns.color_palette(set2)[-2:]
+    t2 = (alpha,)
+    test2 = [x + t2 for x in colors2]
+
+    test_palette = test1 + test2
+    
+    return test_palette
